@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Control de Gastos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@heroicons/v2/24/outline/esm/index.js"></script>
+  <style>
+    #search-suggestions::-webkit-scrollbar,
+    #personas-suggestions::-webkit-scrollbar,
+    #items-suggestions::-webkit-scrollbar {
+      display: none;
+    }
+    @keyframes fadeIn {
+      0% {opacity:0; transform: translateY(10px);}
+      100% {opacity:1; transform: translateY(0);}
+    }
+    .animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+  </style>
+</head>
+<body class="h-full font-sans text-gray-900 flex flex-col">
+  <div class="flex h-full overflow-hidden">
+    <aside id="sidebar" class="transform lg:transform-none transition-transform duration-300 bg-black text-white w-64 flex-shrink-0 z-30 fixed inset-y-0 left-0 overflow-y-auto lg:static lg:inset-auto lg:translate-x-0 -translate-x-full lg:-translate-x-0">
+      <div class="p-6 flex flex-col h-full">
+        <div class="flex items-center justify-center mb-8">
+          <img src="./assets/icon.png" alt="Logo" class="h-20 grayscale">
+        </div>
+        <nav class="space-y-2 flex-1">
+          <button id="menu-home" class="flex items-center space-x-3 w-full p-3 rounded-lg transition-colors hover:bg-gray-800 group focus:outline-none">
+            <svg class="h-5 w-5 text-white group-hover:text-gray-300" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            <span>Inicio</span>
+          </button>
+          <button id="menu-create" class="flex items-center space-x-3 w-full p-3 rounded-lg transition-colors hover:bg-gray-800 group focus:outline-none">
+            <svg class="h-5 w-5 text-white group-hover:text-gray-300" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span>Crear Nuevo</span>
+          </button>
+          <button id="menu-edit-items" class="flex items-center space-x-3 w-full p-3 rounded-lg transition-colors hover:bg-gray-800 group focus:outline-none">
+            <svg class="h-5 w-5 text-white group-hover:text-gray-300" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <span>Editar Items</span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <header class="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-300 shadow-sm">
+        <div class="flex items-center space-x-2">
+          <button id="toggle-sidebar" class="block lg:hidden text-gray-700 focus:outline-none">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <h1 class="text-2xl font-bold text-gray-900 whitespace-nowrap">Control de Gastos</h1>
+        </div>
+        <div class="relative w-96 max-w-full">
+          <input
+            type="text"
+            id="search-persona"
+            placeholder="Buscar persona..."
+            class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
+            autocomplete="off"
+          >
+          <div id="search-suggestions"
+            class="absolute w-full bg-white border rounded-b shadow-lg hidden max-h-48 overflow-y-auto z-10">
+          </div>
+        </div>
+      </header>
+      <main class="flex-1 overflow-auto p-4">
+        <div id="profile-view" class="hidden p-4 space-y-6 animate-fadeIn">
+          <div class="max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-6">
+              <h2 id="profile-name" class="text-2xl font-bold"></h2>
+              <button id="generate-pdf" 
+                      class="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition">
+                Generar Factura PDF
+              </button>
+            </div>
+            <div class="grid grid-cols-1 gap-6">
+              <div class="bg-white p-6 rounded-lg shadow space-y-4">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-xl font-semibold">Pendientes Activos</h3>
+                  <div class="flex items-center gap-4">
+                    <p class="text-lg font-bold">Total: $<span id="total-activo">0</span></p>
+                    <button id="marcar-pagados" 
+                            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-600 transition">
+                      Pagar
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label class="flex items-center cursor-pointer">
+                    <input type="checkbox" id="select-all" class="form-checkbox h-5 w-5 text-green-600 transition transform hover:scale-105">
+                    <span class="ml-2">Seleccionar Todos</span>
+                  </label>
+                </div>
+                <ul id="fiados-activos" class="divide-y divide-gray-200"></ul>
+              </div>
+              <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-xl font-semibold mb-4">Historial de Pagos</h3>
+                <ul id="fiados-pagados" class="divide-y divide-gray-200"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="home-view" class="hidden animate-fadeIn">
+          <h2 class="text-xl font-bold text-gray-900">Pagos Recientes</h2>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-lg shadow">
+              <ul id="fiados-recientes" class="divide-y divide-gray-200">
+                <li class="flex justify-between items-center">
+                  <span class="profile-name" data-person-id="${person.id}">${person.name}</span>
+                  <span>$${person.amount}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div id="create-view" class="hidden animate-fadeIn">
+          <div class="p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div class="w-full">
+                <form id="person-form" class="bg-white p-6 shadow-lg rounded-lg w-full space-y-6">
+                  <h3 class="text-xl font-bold text-gray-900">Nueva Persona</h3>
+                  <div class="space-y-4">
+                    <div>
+                      <label for="person-name" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                      <input 
+                        type="text" 
+                        id="person-name" 
+                        placeholder="Ej: Juan Pérez" 
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-black transition-all"
+                        required
+                      >
+                    </div>
+                    <div>
+                      <label for="person-phone" class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                      <input 
+                        type="tel" 
+                        id="person-phone" 
+                        placeholder="Ej: 1234567890" 
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-black transition-all"
+                        required
+                      >
+                    </div>
+                  </div>
+                  <button 
+                    type="submit" 
+                    class="w-full bg-black text-white py-3 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors"
+                  >
+                    Guardar Persona
+                  </button>
+                </form>
+              </div>
+              <div class="w-full">
+                <form id="item-form" class="bg-white p-6 shadow-lg rounded-lg w-full space-y-6">
+                  <h3 class="text-xl font-bold text-gray-900">Nuevo Item</h3>
+                  <div class="space-y-4">
+                    <div>
+                      <label for="item-description" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                      <input 
+                        type="text" 
+                        id="item-description" 
+                        placeholder="Descripción del item" 
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-black transition-all"
+                        required
+                      >
+                    </div>
+                    <div>
+                      <label for="item-price" class="block text-sm font-medium text-gray-700 mb-1">Precio</label>
+                      <input 
+                        type="number" 
+                        id="item-price" 
+                        placeholder="0.00" 
+                        step="0.01" 
+                        min="0" 
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-black transition-all"
+                        required
+                      >
+                    </div>
+                  </div>
+                  <button 
+                    type="submit" 
+                    class="w-full bg-black text-white py-3 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors"
+                  >
+                    Guardar Item
+                  </button>
+                </form>
+              </div>
+              <div class="w-full relative">
+                <form id="fiado-form" class="bg-white p-6 shadow-lg rounded-lg w-full space-y-6">
+                  <h3 class="text-xl font-bold text-gray-900">Nuevo Pendiente</h3>
+                  <div class="space-y-4">
+                    <div class="relative">
+                      <label for="fiado-persona" class="block text-sm font-medium text-gray-700 mb-1">Persona</label>
+                      <input 
+                        type="text" 
+                        id="fiado-persona" 
+                        placeholder="Buscar persona..." 
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-black transition-all"
+                        autocomplete="off"
+                      >
+                      <div id="personas-suggestions" class="absolute w-full bg-white border rounded-b shadow-lg hidden max-h-48 overflow-y-auto z-20"></div>
+                    </div>
+                    <div class="relative">
+                      <label for="fiado-item" class="block text-sm font-medium text-gray-700 mb-1">Item</label>
+                      <input 
+                        type="text" 
+                        id="fiado-item" 
+                        placeholder="Buscar item..." 
+                        class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-black transition-all"
+                        autocomplete="off"
+                      >
+                      <div id="items-suggestions" class="absolute w-full bg-white border rounded-b shadow-lg hidden max-h-48 overflow-y-auto z-20"></div>
+                    </div>
+                  </div>
+                  <button 
+                    type="submit" 
+                    class="w-full bg-black text-white py-3 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-colors"
+                  >
+                    Guardar Pendiente
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="edit-items-view" class="hidden p-4 animate-fadeIn">
+          <div class="max-w-4xl mx-auto space-y-6">
+            <h2 class="text-2xl font-bold">Editar Items</h2>
+            <input 
+              type="text" 
+              id="search-item" 
+              placeholder="Buscar item..." 
+              class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
+            />
+            <div class="bg-white rounded-lg shadow-lg p-6">
+              <ul id="admin-items-list" class="divide-y divide-gray-200"></ul>
+            </div>
+            <div id="edit-item-form-container" class="hidden mt-8 bg-white rounded-lg shadow-lg p-6 space-y-4">
+              <h3 class="text-xl font-bold">Editar Item</h3>
+              <form id="edit-item-form" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Descripción</label>
+                  <input 
+                    type="text" 
+                    id="edit-item-description" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black p-2 border"
+                    required
+                  >
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Precio</label>
+                  <input 
+                    type="number" 
+                    id="edit-item-price" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black p-2 border"
+                    required
+                    min="0"
+                    step="0.01"
+                  >
+                </div>
+                <div class="flex justify-end space-x-4">
+                  <button 
+                    type="button" 
+                    id="cancel-edit-item"
+                    class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit" 
+                    class="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="notification" class="hidden fixed top-0 left-0 right-0 bg-green-500 text-white text-center p-4">
+    Los fiados seleccionados han sido marcados como pagados.
+  </div>
+
+  <script type="module" src="renderer.js"></script>
+  <script>
+    
+    document.querySelector('body').classList.add('overflow-hidden');
+    window.addEventListener('load', () => {
+      document.querySelector('body').classList.remove('overflow-hidden');
+    });
+
+    
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        0% {opacity:0; transform: translateY(10px);}
+        100% {opacity:1; transform: translateY(0);}
+      }
+      .animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+    `;
+    document.head.append(style);
+  </script>
+</body>
+</html>

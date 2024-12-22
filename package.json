@@ -1,0 +1,39 @@
+{
+  "name": "control-fiados",
+  "version": "1.0.0",
+  "description": "Aplicación para control de fiados",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron  --trace-warnings .",
+    "build": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.controlfiados.app",
+    "productName": "Control de Fiados",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "src/renderer/assets/icon.png"
+    }
+  },
+  "author": "Tu Nombre",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "apexcharts": "^4.3.0",
+    "chart.js": "^4.4.7",
+    "chartist": "^1.3.0",
+    "pdfkit": "^0.14.0"
+  }
+}
