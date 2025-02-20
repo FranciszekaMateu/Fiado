@@ -1,706 +1,267 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-gray-100">
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control de Fiados</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    :root {
-      --primary: #000000;
-      --primary-dark: #333333;
-      --secondary: #666666;
-      --success: #000000;
-      --danger: #000000;
-      --warning: #333333;
-    }
-    
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-
-    /* Layout */
-    .app-container {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      min-height: 100vh;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 280px;
-      background: white;
-      border-right: 1px solid #e5e7eb;
-      transition: all 0.3s ease-in-out;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      z-index: 50;
-      overflow-y: auto;
-      transform: translateX(0);
-    }
-
-    .sidebar-header {
-      background: #000000;
-      padding: 1.5rem;
-      color: white;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      padding: 0.75rem 1.5rem;
-      color: #000000;
-      transition: all 0.2s;
-      border-radius: 0.5rem;
-      margin: 0.25rem 0.75rem;
-    }
-
-    .nav-item:hover {
-      background-color: #f5f5f5;
-      color: #000000;
-    }
-
-    .nav-item.active {
-      background-color: #e5e5e5;
-      color: #000000;
-    }
-
-    .nav-item i {
-      width: 1.5rem;
-      margin-right: 0.75rem;
-    }
-
-    /* Main Content */
-    .main-content {
-      min-height: 100vh;
-      background: #F9FAFB;
-    }
-
-    /* Header */
-    .main-header {
-      background: white;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 1rem;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    /* Forms */
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 0.5rem;
-    }
-
-    .form-input {
-      width: 100%;
-      padding: 0.625rem 0.75rem;
-      border: 1px solid #D1D5DB;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      transition: all 0.2s;
-    }
-
-    .form-input:focus {
-      outline: none;
-      border-color: #000000;
-      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Cards */
-    .card {
-      background: white;
-      border-radius: 0.75rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      padding: 1.5rem;
-    }
-
-    /* Buttons */
-    .btn {
-      padding: 0.625rem 1rem;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      font-size: 0.875rem;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-primary {
-      background: #000000;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #333333;
-    }
-
-    .btn-secondary {
-      background: #f5f5f5;
-      color: #000000;
-      border: 1px solid #000000;
-    }
-
-    .btn-secondary:hover {
-      background: #e5e5e5;
-    }
-
-    /* Tables */
-    .table-container {
-      overflow-x: auto;
-      margin-top: 1rem;
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .table th {
-      background: #F9FAFB;
-      padding: 0.75rem 1rem;
-      text-align: left;
-      font-weight: 500;
-      color: #374151;
-      border-bottom: 1px solid #E5E7EB;
-    }
-
-    .table td {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid #E5E7EB;
-    }
-
-    /* Search Styles */
-    .search-container {
-      position: relative;
-      flex: 1;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .search-input-wrapper {
-      position: relative;
-      width: 100%;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 0.75rem 1rem 0.75rem 2.5rem;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      transition: all 0.2s;
-    }
-
-    .search-input:focus {
-      outline: none;
-      border-color: #000000;
-      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .search-icon {
-      position: absolute;
-      left: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #9ca3af;
-    }
-
-    #search-results,
-    #personas-suggestions,
-    #items-suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      margin-top: 0.5rem;
-      max-height: 400px;
-      overflow-y: auto;
-      z-index: 50;
-    }
-
-    .search-result-person,
-    .search-result-product,
-    .persona-suggestion,
-    .item-suggestion {
-      padding: 0.75rem 1rem;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    .search-result-person:hover,
-    .search-result-product:hover,
-    .persona-suggestion:hover,
-    .item-suggestion:hover {
-      background-color: #f3f4f6;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 1024px) {
-      .app-container {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        transform: translateX(0);
-        transition: transform 0.3s ease-in-out;
-      }
-      
-      .main-content {
-        margin-left: 0;
-      }
-
-      .menu-toggle {
-        display: block !important;
-      }
-    }
-
-    @media (min-width: 1025px) {
-      .app-container {
-        display: flex;
-        flex-direction: row;
-      }
-
-      .sidebar {
-        flex: 0 0 280px;
-        transform: translateX(0);
-        transition: transform 0.3s ease-in-out;
-      }
-      
-      .main-content {
-        flex: 1;
-        margin-left: 280px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .menu-toggle {
-        display: none !important;
-      }
-    }
-
-    /* Menu Toggle Button */
-    .menu-toggle {
-      padding: 0.5rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      z-index: 60;
-      background: white;
-      border: 1px solid #e5e7eb;
-      transition: all 0.2s ease-in-out;
-    }
-
-    .menu-toggle:hover {
-      background-color: #f3f4f6;
-    }
-
-    .-translate-x-full {
-      transform: translateX(-100%) !important;
-      transition: transform 0.3s ease-in-out !important;
-    }
-
-    /* Animations */
-    .fade-enter {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-
-    .fade-enter-active {
-      opacity: 1;
-      transform: translateY(0);
-      transition: opacity 0.3s, transform 0.3s;
-    }
-
-    /* Modal */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.3s;
-    }
-
-    .modal.open {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .modal-content {
-      background: white;
-      border-radius: 0.75rem;
-      width: 100%;
-      max-width: 500px;
-      transform: translateY(20px);
-      transition: transform 0.3s;
-    }
-
-    .modal.open .modal-content {
-      transform: translateY(0);
-    }
-
-    /* Update text colors */
-    .text-primary {
-      color: #000000;
-    }
-
-    .text-red-600 {
-      color: #000000;
-    }
-
-    .text-green-600 {
-      color: #000000;
-    }
-
-    .bg-red-50 {
-      background-color: #f5f5f5;
-    }
-
-    .bg-green-50 {
-      background-color: #f5f5f5;
-    }
-
-    .bg-blue-50 {
-      background-color: #f5f5f5;
-    }
-
-    .text-red-700 {
-      color: #000000;
-    }
-
-    .text-green-700 {
-      color: #000000;
-    }
-
-    .text-blue-700 {
-      color: #000000;
-    }
-
-    /* Notification */
-    #notification {
-      background-color: #000000;
-      color: white;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Fiados</title>
+    <link href="styles.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="h-full">
-  <div class="app-container">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="text-xl font-bold">Control de Fiados</h1>
-      </div>
-      <nav class="py-4">
-        <a href="#" id="menu-home" class="nav-item active">
-          <i class="fas fa-home"></i>
-          <span>Inicio</span>
-        </a>
-        <a href="#" id="menu-create" class="nav-item">
-          <i class="fas fa-plus"></i>
-          <span>Nuevo Registro</span>
-        </a>
-        <a href="#" id="menu-items" class="nav-item">
-          <i class="fas fa-box"></i>
-          <span>Productos</span>
-        </a>
-        <a href="#" id="menu-reports" class="nav-item">
-          <i class="fas fa-chart-bar"></i>
-          <span>Reportes</span>
-        </a>
-      </nav>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <header class="main-header">
-        <div class="flex items-center justify-between">
-          <button class="menu-toggle p-2 rounded-lg hover:bg-gray-100">
-            <i class="fas fa-bars text-gray-600 text-xl"></i>
-          </button>
-          <div class="flex-1 max-w-xl mx-4">
-            <div class="relative">
-              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-              <input type="text" 
-                     id="search-global" 
-                     placeholder="Buscar persona o producto..." 
-                     class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/10">
-        </div>
-          </div>
-        </div>
-      </header>
-
-      <div class="p-6">
-        <!-- Home View -->
-        <div id="home-view" class="space-y-6">
-          <!-- Stats Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="text-sm font-medium text-gray-500">Ventas del Día</h3>
-                  <p class="text-2xl font-semibold text-gray-900 mt-1" id="daily-sales">$0</p>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>Control de Fiados</h1>
             </div>
-                <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <i class="fas fa-chart-line text-primary"></i>
-                </div>
-              </div>
-            </div>
+            <nav class="sidebar-nav">
+                <a href="#" id="menu-home" class="nav-item active">
+                    <i class="fas fa-home"></i>
+                    <span>Inicio</span>
+                </a>
+                <a href="#" id="menu-create" class="nav-item">
+                    <i class="fas fa-plus"></i>
+                    <span>Nuevo Registro</span>
+                </a>
+                <a href="#" id="menu-items" class="nav-item">
+                    <i class="fas fa-box"></i>
+                    <span>Productos</span>
+                </a>
+                <a href="#" id="menu-reports" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reportes</span>
+                </a>
+            </nav>
+        </aside>
 
-            <div class="card">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="text-sm font-medium text-gray-500">Ventas del Mes</h3>
-                  <p class="text-2xl font-semibold text-gray-900 mt-1" id="monthly-sales">$0</p>
-                </div>
-                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <i class="fas fa-calendar text-green-600"></i>
-              </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Recent Activity -->
-          <div class="card">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-gray-900">Pagos Pendientes</h2>
-            </div>
-            <ul id="fiados-recientes" class="divide-y divide-gray-200">
-              <!-- Los fiados pendientes se insertarán aquí -->
-            </ul>
-          </div>
-        </div>
-
-        <!-- Create View -->
-        <div id="create-view" class="hidden space-y-6">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- New Person Form -->
-            <div class="card">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Registrar Persona</h3>
-              <form id="person-form" class="space-y-4">
-                <div class="form-group">
-                  <label class="form-label">Nombre Completo</label>
-                  <input type="text" id="person-name" class="form-input" required>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header con buscador -->
+            <header class="main-header">
+                <div class="header-content">
+                    <button id="menu-toggle" class="menu-toggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="search-container">
+                        <div class="search-wrapper">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" 
+                                   id="search-global" 
+                                   placeholder="Buscar persona o producto por nombre..."
+                                   autocomplete="off"
+                                   spellcheck="false">
+                            <div id="search-results" class="suggestions"></div>
+                        </div>
                     </div>
-                <div class="form-group">
-                  <label class="form-label">Teléfono</label>
-                  <input type="tel" id="person-phone" class="form-input" required>
+                </div>
+            </header>
+
+            <!-- Contenido principal -->
+            <div class="content">
+                <!-- Views -->
+                <div id="home-view" class="view">
+                    <div class="stats-grid">
+                        <div class="stats-card">
+                            <div class="stats-info">
+                                <h3>Ventas del Día</h3>
+                                <p id="daily-sales">$0</p>
+                            </div>
+                            <div class="stats-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                        </div>
+
+                        <div class="stats-card">
+                            <div class="stats-info">
+                                <h3>Ventas del Mes</h3>
+                                <p id="monthly-sales">$0</p>
+                            </div>
+                            <div class="stats-icon green">
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                        </div>
                     </div>
-                <button type="submit" class="btn btn-primary w-full">
-                    Guardar Persona
-                  </button>
-                </form>
-              </div>
 
-            <!-- New Item Form -->
-            <div class="card">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Registrar Producto</h3>
-              <form id="item-form" class="space-y-4">
-                <div class="form-group">
-                  <label class="form-label">Descripción</label>
-                  <input type="text" id="item-description" class="form-input" required>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Pagos Pendientes</h2>
+                        </div>
+                        <div class="card-body">
+                            <ul id="fiados-recientes" class="fiados-list">
+                                <!-- Los fiados pendientes se insertarán aquí -->
+                            </ul>
+                        </div>
                     </div>
-                <div class="form-group">
-                  <label class="form-label">Precio</label>
-                  <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                    <input type="number" 
-                        id="item-price" 
-                           class="form-input pl-7" 
-                        step="0.01" 
-                        min="0" 
-                           required>
-                  </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-full">
-                  Guardar Producto
-                  </button>
-                </form>
-              </div>
 
-            <!-- New Fiado Form -->
-            <div class="card lg:col-span-2">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Registrar Pago Pendiente</h3>
-              <form id="fiado-form" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="form-group">
-                    <label class="form-label">Persona</label>
-                    <div class="relative">
-                      <input type="text" id="fiado-persona" class="form-input" required>
-                      <div id="personas-suggestions" class="absolute w-full mt-1 bg-white rounded-lg shadow-lg hidden">
-                        <!-- Suggestions will be inserted here -->
-                      </div>
+                <div id="create-view" class="view hidden">
+                    <div class="form-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Registrar Persona</h2>
+                            </div>
+                            <div class="card-body">
+                                <form id="person-form">
+                                    <div class="form-group">
+                                        <label for="person-name">Nombre Completo</label>
+                                        <input type="text" 
+                                               id="person-name" 
+                                               placeholder="Ingrese el nombre completo"
+                                               required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="person-phone">Teléfono</label>
+                                        <input type="tel" 
+                                               id="person-phone" 
+                                               placeholder="Ingrese el número de teléfono"
+                                               pattern="[0-9]*"
+                                               required>
+                                    </div>
+                                    <button type="submit" class="btn primary">
+                                        <i class="fas fa-user-plus"></i>
+                                        Guardar Persona
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>Registrar Producto</h2>
+                            </div>
+                            <div class="card-body">
+                                <form id="item-form">
+                                    <div class="form-group">
+                                        <label for="item-description">Descripción</label>
+                                        <input type="text" 
+                                               id="item-description" 
+                                               placeholder="Ingrese la descripción del producto"
+                                               required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="item-price">Precio</label>
+                                        <div class="price-input">
+                                            <span>$</span>
+                                            <input type="number" 
+                                                   id="item-price" 
+                                                   placeholder="0.00"
+                                                   step="0.01" 
+                                                   min="0" 
+                                                   required>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn primary">
+                                        <i class="fas fa-box-open"></i>
+                                        Guardar Producto
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card full-width">
+                            <div class="card-header">
+                                <h2>Registrar Pago Pendiente</h2>
+                            </div>
+                            <div class="card-body">
+                                <form id="fiado-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fiado-persona">Persona</label>
+                                            <div class="search-wrapper">
+                                                <i class="fas fa-search search-icon"></i>
+                                                <input type="text" 
+                                                       id="fiado-persona" 
+                                                       placeholder="Buscar persona..."
+                                                       autocomplete="off"
+                                                       required>
+                                                <div id="personas-suggestions" class="suggestions"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fiado-item">Producto</label>
+                                            <div class="search-wrapper">
+                                                <i class="fas fa-search search-icon"></i>
+                                                <input type="text" 
+                                                       id="fiado-item" 
+                                                       placeholder="Buscar producto..."
+                                                       autocomplete="off"
+                                                       required>
+                                                <div id="items-suggestions" class="suggestions"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn primary">
+                                        <i class="fas fa-file-invoice-dollar"></i>
+                                        Registrar Pendiente
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Producto</label>
-                    <div class="relative">
-                      <input type="text" id="fiado-item" class="form-input" required>
-                      <div id="items-suggestions" class="absolute w-full mt-1 bg-white rounded-lg shadow-lg hidden">
-                        <!-- Suggestions will be inserted here -->
-                      </div>
+                </div>
+
+                <div id="items-view" class="view hidden">
+                    <div class="card">
+                        <div class="card-header with-search">
+                            <h2>Administrar Productos</h2>
+                            <div class="search-wrapper compact">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" 
+                                       id="search-item" 
+                                       placeholder="Buscar producto...">
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="admin-items-list" class="items-list">
+                                <!-- Los productos se insertarán aquí -->
+                            </div>
+                        </div>
                     </div>
-                  </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-full">
-                  Registrar Pendiente
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
 
-        <!-- Items View -->
-        <div id="items-view" class="hidden space-y-6">
-          <div class="card">
-            <div class="flex justify-between items-center mb-6">
-              <h2 class="text-lg font-semibold text-gray-900">Administrar Productos</h2>
-              <div class="relative w-64">
-                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-            <input 
-              type="text" 
-              id="search-item" 
-                  placeholder="Buscar producto..." 
-                  class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/10"
-                >
-              </div>
-            </div>
-            
-            <div id="admin-items-list" class="space-y-4">
-              <!-- Los productos se insertarán aquí -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Profile View -->
-        <div id="profile-view" class="hidden space-y-6">
-          <!-- El contenido del perfil se insertará dinámicamente -->
-        </div>
-
-        <!-- Edit Item Modal -->
-        <div id="edit-item-modal" class="modal hidden">
-          <div class="modal-content p-6 bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Editar Producto</h3>
-              <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-500">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            
-              <form id="edit-item-form" class="space-y-4">
-              <div class="form-group">
-                <label for="edit-item-description" class="form-label">Descripción</label>
-                  <input 
-                    type="text" 
-                    id="edit-item-description" 
-                  class="form-input"
-                    required
-                  >
+                <div id="profile-view" class="view hidden">
+                    <!-- El contenido del perfil se insertará dinámicamente -->
                 </div>
-              
-              <div class="form-group">
-                <label for="edit-item-price" class="form-label">Precio</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input 
-                    type="number" 
-                    id="edit-item-price" 
-                    class="form-input pl-7"
-                    step="0.01"
-                    min="0"
-                    required
-                  >
-                </div>
-              </div>
-              
-              <div class="flex justify-end space-x-3 pt-4">
-                  <button 
-                    type="button" 
-                  onclick="closeEditModal()" 
-                  class="btn btn-secondary"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    type="submit" 
-                  class="btn btn-primary"
-                  >
-                    Guardar Cambios
-                  </button>
-                </div>
-              </form>
             </div>
-          </div>
-        </div>
-      </main>
-  </div>
-
-  <!-- Edit Modal -->
-  <div id="edit-modal" class="modal">
-    <div class="modal-content p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold text-gray-900">Editar Producto</h3>
-        <button class="text-gray-400 hover:text-gray-500" onclick="closeModal()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-      <form id="edit-form" class="space-y-4">
-        <div class="form-group">
-          <label class="form-label">Descripción</label>
-          <input type="text" id="edit-description" class="form-input" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Precio</label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-            <input type="number" 
-                   id="edit-price" 
-                   class="form-input pl-7" 
-                   step="0.01" 
-                   min="0" 
-                   required>
-          </div>
-        </div>
-        <div class="flex justify-end space-x-3">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Guardar Cambios
-          </button>
-        </div>
-      </form>
+        </main>
     </div>
-  </div>
 
-  <!-- Toast Notifications -->
-  <div id="toast-container" class="fixed bottom-4 right-4 space-y-2"></div>
+    <!-- Modales -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Producto</h3>
+                <button class="close-btn" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="edit-form">
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <input type="text" id="edit-description" required>
+                </div>
+                <div class="form-group">
+                    <label>Precio</label>
+                    <div class="price-input">
+                        <span>$</span>
+                        <input type="number" id="edit-price" step="0.01" min="0" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-  <!-- Notification -->
-  <div id="notification" class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-full opacity-0 transition-all duration-300 hidden">
-    Pago registrado exitosamente
-  </div>
+    <!-- Notificaciones -->
+    <div id="notification" class="notification">
+        Operación completada exitosamente
+    </div>
 
-  <script src="renderer.js"></script>
+    <script src="renderer.js"></script>
 </body>
 </html>

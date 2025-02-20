@@ -2,21 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 
-// Determinar la ruta de la base de datos según el entorno y sistema operativo
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-const isLinux = process.platform === 'linux';
-
-// En desarrollo en Linux, usar @database.json en la raíz del proyecto
-// En otros casos, usar el directorio de datos del usuario
-const dbPath = isDev && isLinux
-  ? path.join(process.cwd(), 'data', 'database.json')
-  : path.join(app.getPath('userData'), 'database.json');
-
-console.log('Configuración de base de datos:', {
-  desarrollo: isDev,
-  linux: isLinux,
-  ruta: dbPath
-});
+let dbPath = '';
+let isInitialized = false;
 
 // Estructura inicial de la base de datos
 const initialDb = {
@@ -25,9 +12,30 @@ const initialDb = {
   fiados: []
 };
 
-function initializeDatabase() {
+function initializePath() {
+  if (!app.isReady()) {
+    throw new Error('Electron app no está lista');
+  }
+  
+  // Asegurarse de que estamos usando el nombre correcto de la aplicación
+  const appName = app.getName();
+  dbPath = path.join(app.getPath('userData'), 'database.json');
+  
+  console.log('Configuración de base de datos:', {
+    appName: appName,
+    ruta: dbPath,
+    userDataPath: app.getPath('userData')
+  });
+}
+
+async function initializeDatabase() {
   try {
-    // Crear el directorio data si no existe
+    if (!isInitialized) {
+      initializePath();
+      isInitialized = true;
+    }
+
+    // Crear el directorio si no existe
     const dataDir = path.dirname(dbPath);
     if (!fs.existsSync(dataDir)) {
       console.log('Creando directorio de datos en:', dataDir);
@@ -37,13 +45,42 @@ function initializeDatabase() {
     // Si el archivo no existe, crearlo con la estructura inicial
     if (!fs.existsSync(dbPath)) {
       console.log('Creando nuevo archivo de base de datos en:', dbPath);
-      fs.writeFileSync(dbPath, JSON.stringify(initialDb, null, 2), 'utf8');
+      await fs.promises.writeFile(dbPath, JSON.stringify(initialDb, null, 2), 'utf8');
       console.log('Base de datos inicializada correctamente');
+    } else {
+      // Verificar que el archivo existente tiene una estructura válida
+      try {
+        const data = await fs.promises.readFile(dbPath, 'utf8');
+        const parsed = JSON.parse(data);
+        if (!parsed || !parsed.personas || !parsed.items || !parsed.fiados) {
+          console.error('Estructura de base de datos inválida, creando backup y reinicializando');
+          const backupPath = `${dbPath}.backup.${Date.now()}`;
+          await fs.promises.copyFile(dbPath, backupPath);
+          await fs.promises.writeFile(dbPath, JSON.stringify(initialDb, null, 2), 'utf8');
+        }
+      } catch (error) {
+        console.error('Error al validar base de datos existente:', error);
+        const backupPath = `${dbPath}.backup.${Date.now()}`;
+        if (fs.existsSync(dbPath)) {
+          await fs.promises.copyFile(dbPath, backupPath);
+        }
+        await fs.promises.writeFile(dbPath, JSON.stringify(initialDb, null, 2), 'utf8');
+      }
     }
-    
+
     // Verificar permisos de lectura/escritura
-    fs.accessSync(dbPath, fs.constants.R_OK | fs.constants.W_OK);
+    await fs.promises.access(dbPath, fs.constants.R_OK | fs.constants.W_OK);
     console.log('Permisos de lectura/escritura verificados para:', dbPath);
+    
+    // Intentar leer el archivo para verificar que todo está bien
+    const testRead = await fs.promises.readFile(dbPath, 'utf8');
+    const testParse = JSON.parse(testRead);
+    console.log('Verificación de lectura exitosa:', {
+      personas: testParse.personas.length,
+      items: testParse.items.length,
+      fiados: testParse.fiados.length
+    });
+    
     return true;
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);
@@ -51,37 +88,42 @@ function initializeDatabase() {
   }
 }
 
-function readDatabase() {
+async function readDatabase() {
   try {
+    if (!isInitialized) {
+      await initializeDatabase();
+    }
+
     console.log('Leyendo base de datos desde:', dbPath);
     
-    // Asegurar que la base de datos existe
-    if (!fs.existsSync(dbPath)) {
-      console.log('Base de datos no encontrada, inicializando...');
-      initializeDatabase();
-    }
-    
     // Leer el archivo
-    const data = fs.readFileSync(dbPath, 'utf8');
+    const data = await fs.promises.readFile(dbPath, 'utf8');
     console.log('Datos leídos:', data.length, 'bytes');
     
     // Intentar parsear el JSON
     const parsed = JSON.parse(data);
     
     // Verificar estructura
-    if (!parsed.personas || !parsed.items || !parsed.fiados) {
+    if (!parsed || !parsed.personas || !parsed.items || !parsed.fiados) {
       console.error('Estructura de base de datos inválida');
       throw new Error('Estructura de base de datos inválida');
     }
     
+    console.log('Datos leídos correctamente:', {
+      personas: parsed.personas.length,
+      items: parsed.items.length,
+      fiados: parsed.fiados.length
+    });
+    
     return parsed;
   } catch (error) {
     console.error('Error al leer la base de datos:', error);
+    console.error('Stack:', error.stack);
     
     // Si hay error de parsing, intentar recuperar
     if (error instanceof SyntaxError) {
       console.log('Error de parsing, intentando recuperar...');
-      initializeDatabase();
+      await initializeDatabase();
       return initialDb;
     }
     
@@ -89,16 +131,13 @@ function readDatabase() {
   }
 }
 
-function writeDatabase(data) {
+async function writeDatabase(data) {
   try {
-    console.log('Iniciando escritura en base de datos:', dbPath);
-    
-    // Verificar que el directorio existe
-    const dataDir = path.dirname(dbPath);
-    if (!fs.existsSync(dataDir)) {
-      console.log('Creando directorio:', dataDir);
-      fs.mkdirSync(dataDir, { recursive: true });
+    if (!isInitialized) {
+      await initializeDatabase();
     }
+
+    console.log('Iniciando escritura en base de datos:', dbPath);
     
     // Verificar estructura
     if (!data || !data.personas || !data.items || !data.fiados) {
@@ -107,9 +146,9 @@ function writeDatabase(data) {
     }
     
     // Crear backup antes de escribir
-    const backupPath = `${dbPath}.backup`;
     if (fs.existsSync(dbPath)) {
-      fs.copyFileSync(dbPath, backupPath);
+      const backupPath = `${dbPath}.backup`;
+      await fs.promises.copyFile(dbPath, backupPath);
       console.log('Backup creado en:', backupPath);
     }
     
@@ -122,43 +161,33 @@ function writeDatabase(data) {
       fiados: data.fiados.length
     });
     
-    // Escribir datos de forma síncrona
-    fs.writeFileSync(dbPath, jsonData, { encoding: 'utf8', flag: 'w' });
-    console.log('Datos escritos en el archivo');
+    // Escribir datos
+    await fs.promises.writeFile(dbPath, jsonData, 'utf8');
+    console.log('Datos escritos correctamente');
     
-    // Verificar que se escribió correctamente
-    const verification = fs.readFileSync(dbPath, 'utf8');
-    if (verification !== jsonData) {
-      throw new Error('Verificación de escritura falló');
-    }
-    
-    // Verificar que se puede leer y parsear
-    const parsed = JSON.parse(verification);
-    if (!parsed || !parsed.personas || !parsed.items || !parsed.fiados) {
-      throw new Error('Verificación de estructura falló');
-    }
-    
-    console.log('Escritura verificada correctamente');
     return true;
   } catch (error) {
     console.error('Error al escribir en la base de datos:', error);
     console.error('Stack:', error.stack);
-    
-    // Intentar restaurar desde backup si existe
-    if (fs.existsSync(`${dbPath}.backup`)) {
-      console.log('Intentando restaurar desde backup...');
-      fs.copyFileSync(`${dbPath}.backup`, dbPath);
-    }
-    
     throw error;
   }
 }
 
-// Inicializar la base de datos al cargar el módulo
-initializeDatabase();
+// No inicializar inmediatamente, esperar a que la app esté lista
+if (app.isReady()) {
+  initializeDatabase().catch(error => {
+    console.error('Error al inicializar la base de datos:', error);
+  });
+} else {
+  app.on('ready', () => {
+    initializeDatabase().catch(error => {
+      console.error('Error al inicializar la base de datos:', error);
+    });
+  });
+}
 
 module.exports = {
   readDatabase,
   writeDatabase,
-  dbPath
+  initialDb
 };

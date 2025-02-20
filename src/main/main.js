@@ -1,9 +1,25 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const { readDatabase, writeDatabase, dbPath } = require('./storage');
-const { setupPDFGeneration } = require('./ipc');
+const { readDatabase, writeDatabase } = require('./storage');
 
 let mainWindow = null;
+let appData = null;
+
+async function loadInitialData() {
+  try {
+    console.log('Cargando datos iniciales...');
+    appData = await readDatabase();
+    console.log('Datos cargados:', {
+      personas: appData.personas.length,
+      items: appData.items.length,
+      fiados: appData.fiados.length
+    });
+    return true;
+  } catch (error) {
+    console.error('Error al cargar datos iniciales:', error);
+    throw error;
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -14,61 +30,140 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
-      webSecurity: true,
-      hardwareAcceleration: true,
-      sandbox: true,
-      allowRunningInsecureContent: false
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    console.log('Ventana principal mostrada');
-  });
-
+  // Cargar el archivo HTML
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-
+  
   // Abrir DevTools en desarrollo
-  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+  if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
   }
 
-  mainWindow.webContents.on('render-process-gone', (event, details) => {
-    console.error('Render process gone:', details);
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 
-  // Set Content Security Policy
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self' https:; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; " +
-          "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; " +
-          "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; " +
-          "img-src 'self' data: https:; " +
-          "connect-src 'self' https:;"
-        ]
-      }
-    });
-  });
-
-  mainWindow.webContents.on('crashed', () => {
-    console.error('La ventana principal se ha bloqueado');
-  });
-
-  mainWindow.on('unresponsive', () => {
-    console.error('La ventana principal no responde');
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 }
 
-app.whenReady().then(() => {
-  console.log('Aplicación lista, creando ventana principal...');
-  console.log('Usando base de datos en:', dbPath);
-  createWindow();
-  setupPDFGeneration();
+// Esperar a que la app esté lista antes de crear la ventana
+app.whenReady().then(async () => {
+  try {
+    console.log('Aplicación lista, inicializando...');
+    createWindow();
+    
+    // Configurar manejadores IPC después de que la app esté lista
+    ipcMain.handle('get-database', async () => {
+      console.log('Solicitud de lectura de base de datos recibida');
+      try {
+        if (!appData) {
+          appData = await readDatabase();
+        }
+        return appData;
+      } catch (error) {
+        console.error('Error al leer la base de datos:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('add-person', async (event, person) => {
+      try {
+        if (!appData) {
+          appData = await readDatabase();
+        }
+        const newPerson = { 
+          id: (appData.personas.length + 1), 
+          ...person 
+        };
+        appData.personas.push(newPerson);
+        await writeDatabase(appData);
+        return newPerson;
+      } catch (error) {
+        console.error('Error al agregar persona:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('add-item', async (event, item) => {
+      try {
+        if (!appData) {
+          appData = await readDatabase();
+        }
+        const newItem = { 
+          id: appData.items.length + 1, 
+          ...item 
+        };
+        appData.items.push(newItem);
+        await writeDatabase(appData);
+        return newItem;
+      } catch (error) {
+        console.error('Error al agregar item:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('add-fiado', async (event, fiado) => {
+      try {
+        if (!appData) {
+          appData = await readDatabase();
+        }
+        const newFiado = { 
+          id: appData.fiados.length + 1,
+          ...fiado 
+        };
+        appData.fiados.push(newFiado);
+        await writeDatabase(appData);
+        return newFiado;
+      } catch (error) {
+        console.error('Error al agregar fiado:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('update-database', async (event, data) => {
+      try {
+        await writeDatabase(data);
+        appData = data;
+        return true;
+      } catch (error) {
+        console.error('Error al actualizar base de datos:', error);
+        throw error;
+      }
+    });
+    
+    // Agregar el manejador de focus-fix
+    ipcMain.on('focus-fix', () => {
+      if (mainWindow) {
+        mainWindow.blur();
+        mainWindow.focus();
+      }
+    });
+
+    ipcMain.handle('show-message-box', async (event, options) => {
+      try {
+        const result = await dialog.showMessageBox(mainWindow, {
+          type: options.type || 'info',
+          title: options.title || 'Control de Fiados',
+          message: options.message,
+          buttons: options.buttons || ['OK'],
+          defaultId: options.defaultId || 0
+        });
+        return result;
+      } catch (error) {
+        console.error('Error al mostrar diálogo:', error);
+        throw error;
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error durante la inicialización:', error);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -78,160 +173,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (mainWindow === null) {
     createWindow();
   }
 });
-
-app.on('before-quit', () => {
-  mainWindow = null;
-});
-
-// Manejadores de IPC con mejor logging y manejo de errores
-ipcMain.handle('get-database', async () => {
-  console.log('Solicitud de lectura de base de datos recibida');
-  try {
-    const data = readDatabase();
-    console.log('Base de datos leída exitosamente:', {
-      ruta: dbPath,
-      personas: data.personas.length,
-      items: data.items.length,
-      fiados: data.fiados.length
-    });
-    return data;
-  } catch (error) {
-    console.error('Error al leer la base de datos:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('add-person', async (event, person) => {
-  console.log('Solicitud para agregar persona:', person);
-  try {
-    // Leer base de datos actual
-    console.log('Leyendo base de datos actual desde:', dbPath);
-    const db = readDatabase();
-    console.log('Estado actual de la base de datos:', {
-      ruta: dbPath,
-      personas: db.personas.length,
-      items: db.items.length,
-      fiados: db.fiados.length
-    });
-
-    // Crear nueva persona
-    const newPerson = { 
-      id: (db.personas.length + 1), 
-      ...person 
-    };
-    console.log('Nueva persona a agregar:', newPerson);
-
-    // Agregar a la lista
-    db.personas.push(newPerson);
-    console.log('Persona agregada a la lista en memoria');
-    
-    // Guardar cambios
-    console.log('Intentando escribir en la base de datos:', dbPath);
-    const result = await writeDatabase(db);
-    
-    if (!result) {
-      console.error('Error: writeDatabase retornó false');
-      throw new Error('Error al escribir en la base de datos');
-    }
-    
-    // Verificar que se guardó
-    console.log('Verificando escritura...');
-    const verificacion = readDatabase();
-    console.log('Verificación después de guardar:', {
-      ruta: dbPath,
-      totalPersonas: verificacion.personas.length,
-      ultimaPersona: verificacion.personas[verificacion.personas.length - 1]
-    });
-
-    console.log('Persona agregada exitosamente');
-    return newPerson;
-  } catch (error) {
-    console.error('Error al agregar persona:', error);
-    console.error('Stack:', error.stack);
-    throw error;
-  }
-});
-
-ipcMain.handle('add-item', async (event, item) => {
-  console.log('Solicitud para agregar item:', item);
-  try {
-    console.log('Leyendo base de datos desde:', dbPath);
-    const db = readDatabase();
-    console.log('Estado actual:', {
-      ruta: dbPath,
-      items: db.items.length
-    });
-
-    const newItem = { 
-      id: db.items.length + 1, 
-      ...item 
-    };
-    db.items.push(newItem);
-    
-    console.log('Intentando guardar cambios...');
-    const result = await writeDatabase(db);
-    if (!result) {
-      throw new Error('Error al escribir en la base de datos');
-    }
-    
-    console.log('Item guardado exitosamente');
-    return newItem;
-  } catch (error) {
-    console.error('Error al agregar item:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('add-fiado', async (event, fiado) => {
-  console.log('Solicitud para agregar fiado:', fiado);
-  try {
-    console.log('Leyendo base de datos desde:', dbPath);
-    const db = readDatabase();
-    console.log('Estado actual:', {
-      ruta: dbPath,
-      fiados: db.fiados.length
-    });
-
-    const newFiado = { 
-      id: db.fiados.length + 1,
-      ...fiado 
-    };
-    db.fiados.push(newFiado);
-    
-    console.log('Intentando guardar cambios...');
-    const result = await writeDatabase(db);
-    if (!result) {
-      throw new Error('Error al escribir en la base de datos');
-    }
-    
-    console.log('Fiado guardado exitosamente');
-    return newFiado;
-  } catch (error) {
-    console.error('Error al agregar fiado:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('update-database', async (event, data) => {
-  console.log('Solicitud para actualizar base de datos');
-  try {
-    console.log('Intentando escribir en:', dbPath);
-    const result = await writeDatabase(data);
-    if (!result) {
-      throw new Error('Error al escribir en la base de datos');
-    }
-    console.log('Base de datos actualizada exitosamente');
-    return true;
-  } catch (error) {
-    console.error('Error al actualizar base de datos:', error);
-    throw error;
-  }
-});
-
-// Deshabilitar aceleración por hardware si hay problemas
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');

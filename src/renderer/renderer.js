@@ -87,104 +87,10 @@ function closeEditModal() {
 }
 
 async function updateUI() {
-  const fiadosRecientes = document.getElementById('fiados-recientes');
-  
-  if (!fiadosRecientes) {
-    console.error('No se encontró el contenedor de fiados recientes');
-    return;
-  }
-
-  // Filtrar fiados activos y ordenarlos por fecha y hora más reciente
-  const fiadosActivos = fiados
-    .filter(fiado => fiado.estado === 'activo')
-    .sort((a, b) => {
-      const dateA = new Date(a.fecha + 'T' + (a.hora || '00:00') + ':00Z');
-      const dateB = new Date(b.fecha + 'T' + (b.hora || '00:00') + ':00Z');
-      return dateB - dateA;
-    })
-    .slice(0, 10); // Tomar solo los 10 más recientes
-
-  // Agrupar por persona los fiados filtrados
-  const personasConDeudas = fiadosActivos.reduce((acc, fiado) => {
-      const persona = personas.find(p => p.id === fiado.personaId);
-    if (!persona) return acc;
-    
-    if (!acc[persona.id]) {
-      acc[persona.id] = {
-        nombre: persona.nombre,
-        telefono: persona.telefono,
-        id: persona.id,
-        fiados: [],
-        total: 0
-      };
-    }
-    
-    acc[persona.id].fiados.push(fiado);
-    acc[persona.id].total += fiado.producto.precio;
-      return acc;
-    }, {});
-
-  // Generar HTML para cada persona con sus fiados pendientes
-  const fiadosHTML = Object.values(personasConDeudas).map(persona => `
-    <li class="p-4 hover:bg-gray-50 transition-colors border-b" data-person-id="${persona.id}">
-      <div class="flex justify-between items-start">
-        <div>
-          <span class="text-lg font-medium text-gray-900 profile-name cursor-pointer hover:text-primary">${persona.nombre}</span>
-          <p class="text-sm text-gray-500">${persona.telefono}</p>
-          <div class="mt-2">
-            ${persona.fiados.map(fiado => `
-              <div class="text-sm text-gray-600">
-                • ${fiado.producto.descripcion} - $${formatNumber(fiado.producto.precio)}
-                <span class="text-xs text-gray-400">(${formatDate(fiado.fecha, false)} ${fiado.hora})</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-        <div class="text-right">
-          <p class="text-lg font-semibold text-red-600">$${formatNumber(persona.total)}</p>
-          <p class="text-xs text-gray-500">Total pendiente</p>
-        </div>
-      </div>
-    </li>
-  `).join('');
-
-  fiadosRecientes.innerHTML = fiadosHTML || '<li class="p-4 text-gray-500">No hay personas con pagos pendientes</li>';
-
-  // Actualizar resumen de ventas
-  await updateSalesSummary();
-
-  // Agregar eventos de click a los nombres de perfil
-  document.querySelectorAll('.profile-name').forEach(profileName => {
-    profileName.addEventListener('click', (e) => {
-      const personId = parseInt(e.target.closest('li').dataset.personId);
-      showProfile(personId); 
-    });
-  });
-}
-
-async function refreshData() {
   try {
-    console.log('Iniciando carga de datos...');
-    const db = await window.api.getDatabase();
-    console.log('Base de datos recibida:', db);
-
-    if (!db) {
-      console.error('La base de datos está vacía');
-      return;
-    }
-
-    personas = Array.isArray(db.personas) ? db.personas : [];
-    productos = Array.isArray(db.items) ? db.items : [];
-    fiados = Array.isArray(db.fiados) ? db.fiados : [];
+    console.log('Renderer: Actualizando UI...');
     
-    console.log('Datos procesados:', {
-      personas: personas.length,
-      productos: productos.length,
-      fiados: fiados.length
-    });
-
-    await migrarFiadosSinPrecioHistorico();
-
+    // Actualizar lista de productos en el selector
     const itemSelect = document.getElementById('fiado-item');
     if (itemSelect) {
       itemSelect.innerHTML = `
@@ -195,25 +101,79 @@ async function refreshData() {
       `;
     }
 
-    const itemsList = document.getElementById('items-list');
-    if (itemsList) {
-      updateItemsList();
+    // Actualizar lista de personas
+    const personasList = document.getElementById('personas-list');
+    if (personasList) {
+      personasList.innerHTML = personas.map(persona => `
+        <div class="persona-item">
+          <span>${persona.nombre}</span>
+          <span>${persona.telefono}</span>
+        </div>
+      `).join('');
     }
-    
+
+    // Actualizar lista de fiados
+    const fiadosList = document.getElementById('fiados-list');
+    if (fiadosList) {
+      fiadosList.innerHTML = fiados.map(fiado => `
+        <div class="fiado-item">
+          <span>${fiado.persona?.nombre || 'Sin nombre'}</span>
+          <span>${fiado.producto?.descripcion || 'Sin producto'}</span>
+          <span>$${fiado.producto?.precio || 0}</span>
+        </div>
+      `).join('');
+    }
+
+    // Actualizar lista de items para edición
     const editItemsList = document.getElementById('edit-items-list');
     if (editItemsList) {
       updateEditItemsList();
     }
 
+    // Actualizar lista de items en el panel de administración
     const adminItemsList = document.getElementById('admin-items-list');
     if (adminItemsList) {
       updateAdminItemsList();
     }
 
-    await updateUI();
-    console.log('Actualización de UI completada');
+    // Actualizar lista simple de items
+    const itemsList = document.getElementById('items-list');
+    if (itemsList) {
+      updateItemsList();
+    }
+
+    console.log('Renderer: UI actualizada correctamente');
   } catch (error) {
-    console.error('Error al refrescar datos:', error);
+    console.error('Renderer: Error al actualizar UI:', error);
+  }
+}
+
+async function refreshData() {
+  try {
+    console.log('Renderer: Iniciando carga de datos...');
+    const db = await window.api.getDatabase();
+    console.log('Renderer: Base de datos recibida:', db);
+
+    if (!db) {
+      console.error('Renderer: La base de datos está vacía');
+      return;
+    }
+
+    personas = Array.isArray(db.personas) ? db.personas : [];
+    productos = Array.isArray(db.items) ? db.items : [];
+    fiados = Array.isArray(db.fiados) ? db.fiados : [];
+    
+    console.log('Renderer: Datos procesados:', {
+      personas: personas.length,
+      productos: productos.length,
+      fiados: fiados.length
+    });
+
+    // Actualizar la interfaz
+    await updateUI();
+    console.log('Renderer: UI actualizada');
+  } catch (error) {
+    console.error('Renderer: Error al refrescar datos:', error);
   }
 }
 
@@ -228,88 +188,119 @@ function cleanupEventListeners() {
 
 function setupSearchHandlers() {
   const searchGlobal = document.getElementById('search-global');
-  const searchResults = document.getElementById('search-results') || createSearchResultsContainer();
+  const searchResults = document.getElementById('search-results');
 
-  if (!searchGlobal) {
-    console.error('Elemento de búsqueda global no encontrado');
+  if (!searchGlobal || !searchResults) {
+    console.error('Elementos de búsqueda no encontrados');
     return;
   }
 
   const handleSearch = (e) => {
     const searchTerm = e.target.value.toLowerCase().trim();
+    const wrapper = searchGlobal.closest('.search-wrapper');
     
     if (!searchTerm) {
-      searchResults.classList.add('hidden');
+      wrapper.classList.remove('active');
+      searchResults.classList.remove('show');
       return;
     }
 
     const personasMatches = personas.filter(p => 
       p.nombre.toLowerCase().includes(searchTerm) ||
-      p.telefono.includes(searchTerm)
-    );
+      (p.telefono && p.telefono.includes(searchTerm))
+    ).slice(0, 5);
 
-    let resultsHTML = '';
+    const productosMatches = productos.filter(p =>
+      p.descripcion.toLowerCase().includes(searchTerm)
+    ).slice(0, 5);
 
-    if (personasMatches.length > 0) {
-      resultsHTML = personasMatches.map(persona => {
-        const fiadosActivos = fiados.filter(f => 
-          f.personaId === persona.id && f.estado === 'activo'
-        );
-        
-        const deudaTotal = fiadosActivos.reduce((total, f) => 
-          total + f.producto.precio, 0
-        );
+    searchResults.innerHTML = '';
 
-        return `
-          <div class="p-4 hover:bg-gray-50 cursor-pointer search-result-person border-b" 
-               data-person-id="${persona.id}">
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="font-medium text-gray-900">${persona.nombre}</div>
-                <div class="text-sm text-gray-500">${persona.telefono}</div>
-                ${deudaTotal > 0 ? `
-                  <div class="text-sm text-red-600 mt-1">
-                    Deuda pendiente: $${formatNumber(deudaTotal)}
-                  </div>
-                  <div class="text-xs text-gray-500">
-                    ${fiadosActivos.length} pago${fiadosActivos.length !== 1 ? 's' : ''} pendiente${fiadosActivos.length !== 1 ? 's' : ''}
-                  </div>
-                ` : `
-                  <div class="text-sm text-green-600 mt-1">Sin pagos pendientes</div>
-                `}
-              </div>
-              <i class="fas fa-chevron-right text-gray-400"></i>
-            </div>
+    if (personasMatches.length > 0 || productosMatches.length > 0) {
+      // Grupo de Personas
+      if (personasMatches.length > 0) {
+        const personasGroup = document.createElement('div');
+        personasGroup.className = 'suggestions-group';
+        personasGroup.innerHTML = `
+          <div class="suggestions-group-title">
+            <i class="fas fa-users"></i>
+            Personas
           </div>
+          ${personasMatches.map(persona => `
+            <div class="suggestion-item" data-person-id="${persona.id}">
+              <div class="suggestion-main">
+                <div class="suggestion-title">${persona.nombre}</div>
+                <div class="suggestion-subtitle">
+                  <i class="fas fa-phone"></i>
+                  ${persona.telefono || 'Sin teléfono'}
+                </div>
+              </div>
+              <div class="suggestion-meta">
+                <span class="suggestion-badge person">
+                  <i class="fas fa-user"></i>
+                </span>
+              </div>
+            </div>
+          `).join('')}
         `;
-      }).join('');
+        searchResults.appendChild(personasGroup);
+      }
+
+      // Grupo de Productos
+      if (productosMatches.length > 0) {
+        const productosGroup = document.createElement('div');
+        productosGroup.className = 'suggestions-group';
+        productosGroup.innerHTML = `
+          <div class="suggestions-group-title">
+            <i class="fas fa-box"></i>
+            Productos
+          </div>
+          ${productosMatches.map(producto => `
+            <div class="suggestion-item" data-product-id="${producto.id}">
+              <div class="suggestion-main">
+                <div class="suggestion-title">${producto.descripcion}</div>
+                <div class="suggestion-subtitle">
+                  <i class="fas fa-tag"></i>
+                  Stock disponible
+                </div>
+              </div>
+              <div class="suggestion-meta">
+                <span class="suggestion-price">$${formatNumber(producto.precio)}</span>
+                <span class="suggestion-badge product">
+                  <i class="fas fa-box"></i>
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        `;
+        searchResults.appendChild(productosGroup);
+      }
+
+      wrapper.classList.add('active');
+      searchResults.classList.add('show');
+
+      // Agregar event listeners a los items
+      searchResults.querySelectorAll('.suggestion-item[data-person-id]').forEach(el => {
+        el.addEventListener('click', () => {
+          const personId = parseInt(el.dataset.personId);
+          showProfile(personId);
+          searchGlobal.value = '';
+          wrapper.classList.remove('active');
+          searchResults.classList.remove('show');
+        });
+      });
+
     } else {
-      resultsHTML = `
-        <div class="p-4 text-gray-500 text-center">
-          No se encontraron resultados
+      searchResults.innerHTML = `
+        <div class="suggestions-empty">
+          <i class="fas fa-search"></i>
+          <p>No se encontraron resultados</p>
+          <p class="text-sm text-gray-400 mt-1">Intenta con otros términos de búsqueda</p>
         </div>
       `;
+      wrapper.classList.add('active');
+      searchResults.classList.add('show');
     }
-
-    searchResults.innerHTML = resultsHTML;
-    searchResults.classList.remove('hidden');
-
-    // Agregar eventos de click a los resultados
-    const resultElements = searchResults.querySelectorAll('.search-result-person');
-    resultElements.forEach(el => {
-      // Remover eventos anteriores
-      const newEl = el.cloneNode(true);
-      el.parentNode.replaceChild(newEl, el);
-      
-      // Agregar nuevo evento
-      newEl.addEventListener('click', () => {
-        const personId = parseInt(newEl.dataset.personId);
-        console.log('Click en perfil:', personId);
-        showProfile(personId);
-        searchGlobal.value = '';
-        searchResults.classList.add('hidden');
-      });
-    });
   };
 
   // Remover listener anterior si existe
@@ -324,10 +315,12 @@ function setupSearchHandlers() {
   window[listenerName] = handleSearch;
   searchGlobal.setAttribute('data-search-listener', listenerName);
 
-  // Cerrar resultados al hacer click fuera
+  // Cerrar sugerencias al hacer click fuera
   document.addEventListener('click', (e) => {
+    const wrapper = searchGlobal.closest('.search-wrapper');
     if (!searchGlobal.contains(e.target) && !searchResults.contains(e.target)) {
-      searchResults.classList.add('hidden');
+      wrapper.classList.remove('active');
+      searchResults.classList.remove('show');
     }
   });
 }
@@ -362,152 +355,336 @@ function getFiadosActivosHTML(personaId) {
   return '';
 }
 
-// Actualizar setupPersonaSearch para mejorar la búsqueda de personas
+// Función para mostrar sugerencias
+function showSuggestions(input, suggestionsContainer, items, type = 'person') {
+    if (!input || !suggestionsContainer || !items) {
+        console.error('Faltan elementos necesarios para mostrar sugerencias');
+        return;
+    }
+
+    const searchTerm = input.value.toLowerCase().trim();
+    const wrapper = input.closest('.search-wrapper');
+    
+    if (!wrapper) {
+        console.error('No se encontró el wrapper de búsqueda');
+        return;
+    }
+    
+    if (!searchTerm) {
+        wrapper.classList.remove('active');
+        suggestionsContainer.classList.remove('show');
+        return;
+    }
+
+    const matches = items.filter(item => {
+        if (type === 'person') {
+            return item.nombre.toLowerCase().includes(searchTerm) ||
+                   (item.telefono && item.telefono.includes(searchTerm));
+        } else {
+            return item.descripcion.toLowerCase().includes(searchTerm);
+        }
+    }).slice(0, 5); // Limitamos a 5 resultados para mejor rendimiento
+
+    suggestionsContainer.innerHTML = '';
+
+    if (matches.length > 0) {
+        const groupTitle = type === 'person' ? 'Personas' : 'Productos';
+        const groupIcon = type === 'person' ? 'fa-users' : 'fa-boxes';
+        
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'suggestions-group';
+        groupDiv.innerHTML = `
+            <div class="suggestions-group-title">
+                <i class="fas ${groupIcon}"></i>
+                ${groupTitle}
+            </div>
+        `;
+
+        matches.forEach(item => {
+            const suggestionDiv = document.createElement('div');
+            suggestionDiv.className = 'suggestion-item';
+            suggestionDiv.dataset.id = item.id;
+
+            if (type === 'person') {
+                suggestionDiv.innerHTML = `
+                    <div class="suggestion-main">
+                        <div class="suggestion-title">${item.nombre}</div>
+                        <div class="suggestion-subtitle">
+                            <i class="fas fa-phone"></i>
+                            ${item.telefono || 'Sin teléfono'}
+                        </div>
+                    </div>
+                    <div class="suggestion-meta">
+                        <span class="suggestion-badge person">
+                            <i class="fas fa-user"></i>
+                        </span>
+                    </div>
+                `;
+            } else {
+                suggestionDiv.innerHTML = `
+                    <div class="suggestion-main">
+                        <div class="suggestion-title">${item.descripcion}</div>
+                        <div class="suggestion-subtitle">
+                            <i class="fas fa-tag"></i>
+                            Stock disponible
+                        </div>
+                    </div>
+                    <div class="suggestion-meta">
+                        <span class="suggestion-price">$${formatNumber(item.precio)}</span>
+                        <span class="suggestion-badge product">
+                            <i class="fas fa-box"></i>
+                        </span>
+                    </div>
+                `;
+            }
+
+            suggestionDiv.addEventListener('click', () => {
+                const selectedItem = matches.find(m => m.id === parseInt(suggestionDiv.dataset.id));
+                if (selectedItem) {
+                    if (type === 'person') {
+                        input.value = selectedItem.nombre;
+                        selectedPersonId = selectedItem.id;
+                    } else {
+                        input.value = selectedItem.descripcion;
+                        input.dataset.itemId = selectedItem.id;
+                    }
+                    wrapper.classList.remove('active');
+                    suggestionsContainer.classList.remove('show');
+                }
+            });
+
+            groupDiv.appendChild(suggestionDiv);
+        });
+
+        suggestionsContainer.appendChild(groupDiv);
+    } else {
+        suggestionsContainer.innerHTML = `
+            <div class="suggestions-empty">
+                <i class="fas ${type === 'person' ? 'fa-user-slash' : 'fa-box-open'}"></i>
+                <p>No se encontraron ${type === 'person' ? 'personas' : 'productos'}</p>
+                <p class="text-sm text-gray-400 mt-1">
+                    Intenta con ${type === 'person' ? 'otro nombre o teléfono' : 'otra descripción'}
+                </p>
+            </div>
+        `;
+    }
+
+    wrapper.classList.add('active');
+    suggestionsContainer.classList.add('show');
+}
+
+// Configurar búsqueda de personas
 function setupPersonaSearch() {
-  const fiadoPersonaInput = document.getElementById('fiado-persona');
-  const personasSuggestions = document.getElementById('personas-suggestions') || createSuggestionsContainer('personas-suggestions', fiadoPersonaInput);
-
-  if (!fiadoPersonaInput) {
-    console.error('No se encontró el campo de búsqueda de personas');
-    return;
-  }
-
-  const handleInput = (e) => {
-    const searchTerm = e.target.value.toLowerCase().trim();
+    const input = document.getElementById('fiado-persona');
+    const suggestionsContainer = document.getElementById('personas-suggestions');
     
-    if (!searchTerm) {
-      personasSuggestions.innerHTML = '';
-      personasSuggestions.classList.add('hidden');
-      return;
+    if (!input || !suggestionsContainer) {
+        console.error('No se encontraron los elementos necesarios para la búsqueda de personas');
+        return;
     }
+    
+    // Remover listeners anteriores
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+    
+    newInput.addEventListener('input', () => {
+        const searchTerm = newInput.value.toLowerCase().trim();
+        const wrapper = newInput.closest('.search-wrapper');
+        
+        if (!searchTerm) {
+            wrapper.classList.remove('active');
+            suggestionsContainer.classList.remove('show');
+            return;
+        }
 
-    const matches = personas.filter(persona => 
-      persona.nombre.toLowerCase().includes(searchTerm) ||
-      persona.telefono.includes(searchTerm)
-    );
+        const matches = personas.filter(p => 
+            p.nombre.toLowerCase().includes(searchTerm) ||
+            (p.telefono && p.telefono.includes(searchTerm))
+        ).slice(0, 5);
 
-    if (matches.length > 0) {
-      personasSuggestions.innerHTML = matches.map(persona => `
-        <div class="p-3 hover:bg-gray-50 cursor-pointer persona-suggestion" 
-             data-id="${persona.id}" 
-             data-nombre="${persona.nombre}">
-          <div class="font-medium">${persona.nombre}</div>
-          <div class="text-sm text-gray-500">${persona.telefono}</div>
-          ${getFiadosActivosHTML(persona.id)}
-        </div>
-      `).join('');
-      
-      personasSuggestions.classList.remove('hidden');
+        suggestionsContainer.innerHTML = '';
 
-      // Agregar eventos de click a las sugerencias
-      personasSuggestions.querySelectorAll('.persona-suggestion').forEach(suggestion => {
-        suggestion.addEventListener('click', (e) => {
-          const element = e.currentTarget;
-          selectedPersonId = parseInt(element.dataset.id);
-          fiadoPersonaInput.value = element.dataset.nombre;
-          personasSuggestions.classList.add('hidden');
-        });
-      });
-    } else {
-      personasSuggestions.innerHTML = `
-        <div class="p-3 text-gray-500">No se encontraron resultados</div>
-      `;
-      personasSuggestions.classList.remove('hidden');
-    }
-  };
+        if (matches.length > 0) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'suggestions-group';
+            groupDiv.innerHTML = `
+                <div class="suggestions-group-title">
+                    <i class="fas fa-users"></i>
+                    Personas
+                </div>
+                ${matches.map(persona => `
+                    <div class="suggestion-item" data-person-id="${persona.id}">
+                        <div class="suggestion-main">
+                            <div class="suggestion-title">${persona.nombre}</div>
+                            <div class="suggestion-subtitle">
+                                <i class="fas fa-phone"></i>
+                                ${persona.telefono || 'Sin teléfono'}
+                            </div>
+                        </div>
+                        <div class="suggestion-meta">
+                            <span class="suggestion-badge person">
+                                <i class="fas fa-user"></i>
+                            </span>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+            suggestionsContainer.appendChild(groupDiv);
 
-  // Remover listener anterior si existe
-  if (currentSearchListener) {
-    fiadoPersonaInput.removeEventListener('input', currentSearchListener);
-  }
+            // Agregar event listeners a los items
+            suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const personId = parseInt(item.dataset.personId);
+                    const selectedPerson = personas.find(p => p.id === personId);
+                    if (selectedPerson) {
+                        newInput.value = selectedPerson.nombre;
+                        selectedPersonId = selectedPerson.id;
+                        wrapper.classList.remove('active');
+                        suggestionsContainer.classList.remove('show');
+                    }
+                });
+            });
+        } else {
+            suggestionsContainer.innerHTML = `
+                <div class="suggestions-empty">
+                    <i class="fas fa-user-slash"></i>
+                    <p>No se encontraron personas</p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        Intenta con otro nombre o teléfono
+                    </p>
+                </div>
+            `;
+        }
 
-  // Agregar nuevo listener
-  fiadoPersonaInput.addEventListener('input', handleInput);
-  currentSearchListener = handleInput;
-
-  // Cerrar sugerencias al hacer click fuera
-  document.addEventListener('click', (e) => {
-    if (!fiadoPersonaInput.contains(e.target) && !personasSuggestions.contains(e.target)) {
-      personasSuggestions.classList.add('hidden');
-    }
-  });
+        wrapper.classList.add('active');
+        suggestionsContainer.classList.add('show');
+    });
+    
+    // Cerrar sugerencias al hacer click fuera
+    document.addEventListener('click', (e) => {
+        const wrapper = newInput.closest('.search-wrapper');
+        if (wrapper && !wrapper.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            wrapper.classList.remove('active');
+            suggestionsContainer.classList.remove('show');
+        }
+    });
 }
 
-// Función auxiliar para crear contenedor de sugerencias
-function createSuggestionsContainer(id, inputElement) {
-  if (!inputElement?.parentElement) return null;
-  
-  const container = document.createElement('div');
-  container.id = id;
-  container.className = 'absolute w-full mt-1 bg-white rounded-lg shadow-lg z-50 hidden';
-  inputElement.parentElement.appendChild(container);
-  return container;
-}
-
-// Actualizar setupItemSearch para mejorar la búsqueda de productos
+// Configurar búsqueda de productos
 function setupItemSearch() {
-  const fiadoItemInput = document.getElementById('fiado-item');
-  const itemsSuggestions = document.getElementById('items-suggestions') || createSuggestionsContainer('items-suggestions', fiadoItemInput);
-
-  if (!fiadoItemInput) {
-    console.error('No se encontró el campo de búsqueda de items');
-    return;
-  }
-
-  const handleInput = (e) => {
-    const searchTerm = e.target.value.toLowerCase().trim();
+    const input = document.getElementById('fiado-item');
+    const suggestionsContainer = document.getElementById('items-suggestions');
     
-    if (!searchTerm) {
-      itemsSuggestions.innerHTML = '';
-      itemsSuggestions.classList.add('hidden');
-      return;
+    if (!input || !suggestionsContainer) {
+        console.error('No se encontraron los elementos necesarios para la búsqueda de productos');
+        return;
     }
+    
+    // Remover listeners anteriores
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+    
+    newInput.addEventListener('input', () => {
+        const searchTerm = newInput.value.toLowerCase().trim();
+        const wrapper = newInput.closest('.search-wrapper');
+        
+        if (!searchTerm) {
+            wrapper.classList.remove('active');
+            suggestionsContainer.classList.remove('show');
+            return;
+        }
 
-    const matches = productos.filter(item => 
-      item.descripcion.toLowerCase().includes(searchTerm)
-    );
+        const matches = productos.filter(p =>
+            p.descripcion.toLowerCase().includes(searchTerm)
+        ).slice(0, 5);
 
-    if (matches.length > 0) {
-      itemsSuggestions.innerHTML = matches.map(item => `
-        <div class="p-3 hover:bg-gray-50 cursor-pointer item-suggestion" 
-             data-id="${item.id}" 
-             data-descripcion="${item.descripcion}">
-          <div class="font-medium">${item.descripcion}</div>
-          <div class="text-sm text-gray-500">$${formatNumber(item.precio)}</div>
-        </div>
-      `).join('');
-      
-      itemsSuggestions.classList.remove('hidden');
+        suggestionsContainer.innerHTML = '';
 
-      // Agregar eventos de click a las sugerencias
-      itemsSuggestions.querySelectorAll('.item-suggestion').forEach(suggestion => {
-        suggestion.addEventListener('click', (e) => {
-          const element = e.currentTarget;
-          fiadoItemInput.value = element.dataset.descripcion;
-          fiadoItemInput.dataset.itemId = element.dataset.id;
-          itemsSuggestions.classList.add('hidden');
-        });
-      });
-    } else {
-      itemsSuggestions.innerHTML = `
-        <div class="p-3 text-gray-500">No se encontraron resultados</div>
-      `;
-      itemsSuggestions.classList.remove('hidden');
-    }
-  };
+        if (matches.length > 0) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'suggestions-group';
+            groupDiv.innerHTML = `
+                <div class="suggestions-group-title">
+                    <i class="fas fa-box"></i>
+                    Productos
+                </div>
+                ${matches.map(producto => `
+                    <div class="suggestion-item" data-product-id="${producto.id}">
+                        <div class="suggestion-main">
+                            <div class="suggestion-title">${producto.descripcion}</div>
+                            <div class="suggestion-subtitle">
+                                <i class="fas fa-tag"></i>
+                                Stock disponible
+                            </div>
+                        </div>
+                        <div class="suggestion-meta">
+                            <span class="suggestion-price">$${formatNumber(producto.precio)}</span>
+                            <span class="suggestion-badge product">
+                                <i class="fas fa-box"></i>
+                            </span>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+            suggestionsContainer.appendChild(groupDiv);
 
-  fiadoItemInput.addEventListener('input', handleInput);
+            // Agregar event listeners a los items
+            suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const productId = parseInt(item.dataset.productId);
+                    const selectedProduct = productos.find(p => p.id === productId);
+                    if (selectedProduct) {
+                        newInput.value = selectedProduct.descripcion;
+                        newInput.dataset.itemId = selectedProduct.id;
+                        wrapper.classList.remove('active');
+                        suggestionsContainer.classList.remove('show');
+                    }
+                });
+            });
+        } else {
+            suggestionsContainer.innerHTML = `
+                <div class="suggestions-empty">
+                    <i class="fas fa-box-open"></i>
+                    <p>No se encontraron productos</p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        Intenta con otra descripción
+                    </p>
+                </div>
+            `;
+        }
 
-  // Cerrar sugerencias al hacer click fuera
-  document.addEventListener('click', (e) => {
-    if (!fiadoItemInput.contains(e.target) && !itemsSuggestions.contains(e.target)) {
-      itemsSuggestions.classList.add('hidden');
-    }
-  });
+        wrapper.classList.add('active');
+        suggestionsContainer.classList.add('show');
+    });
+    
+    // Cerrar sugerencias al hacer click fuera
+    document.addEventListener('click', (e) => {
+        const wrapper = newInput.closest('.search-wrapper');
+        if (wrapper && !wrapper.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            wrapper.classList.remove('active');
+            suggestionsContainer.classList.remove('show');
+        }
+    });
 }
 
 // Al inicio del archivo, después de las variables globales
 let isProcessingForm = false;
+
+async function reinitializeForm(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  // Limpiar valores de los inputs
+  form.querySelectorAll('input').forEach(input => {
+    input.value = '';
+    input.readOnly = false;
+  });
+
+  // Reinicializar variables globales si es necesario
+  if (formId === 'fiado-form') {
+    selectedPersonId = null;
+  }
+}
 
 function setupForms() {
   // Formulario de persona
@@ -516,56 +693,38 @@ function setupForms() {
     personForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (isProcessingForm) return;
-      isProcessingForm = true;
       
-      const nameInput = document.getElementById('person-name');
-      const phoneInput = document.getElementById('person-phone');
+      try {
+        isProcessingForm = true;
+        const nameInput = document.getElementById('person-name');
+        const phoneInput = document.getElementById('person-phone');
 
-      if (!nameInput || !phoneInput) {
-        console.error('No se encontraron los campos del formulario de persona');
-        isProcessingForm = false;
-        return;
-      }
+        if (!nameInput || !phoneInput) {
+          showNotification('No se encontraron los campos del formulario', 'error');
+          return;
+        }
 
-      const nombreCompleto = nameInput.value.trim();
-      const telefono = phoneInput.value.trim();
+        const nombreCompleto = nameInput.value.trim();
+        const telefono = phoneInput.value.trim();
 
-      if (nombreCompleto && telefono) {
-        try {
+        if (nombreCompleto && telefono) {
           const newPerson = await window.api.addPerson({ 
             nombre: nombreCompleto,
             telefono: telefono
           });
 
           personas.push(newPerson);
-          
-          // Limpiar los campos
-          nameInput.value = '';
-          phoneInput.value = '';
-          
           await refreshData();
-          setupPersonaSearch(); 
-          setupItemSearch();
-          setupSearchHandlers();
+          showNotification('Persona guardada exitosamente');
           
-          alert('Persona guardada exitosamente');
-
-          // Restaurar el foco y la capacidad de edición
-          nameInput.readOnly = false;
-          phoneInput.readOnly = false;
-          nameInput.focus();
-          
-        } catch (error) {
-          console.error('Error al guardar persona:', error);
-          alert('Error al guardar la persona');
+          await reinitializeForm('person-form');
         }
+      } catch (error) {
+        console.error('Error al guardar persona:', error);
+        showNotification('Error al guardar la persona', 'error');
+      } finally {
+        isProcessingForm = false;
       }
-      isProcessingForm = false;
-    });
-
-    // Prevenir que el formulario pierda el foco
-    personForm.addEventListener('click', (e) => {
-      e.stopPropagation();
     });
   }
 
@@ -575,55 +734,40 @@ function setupForms() {
     itemForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (isProcessingForm) return;
-      isProcessingForm = true;
       
-      const descriptionInput = document.getElementById('item-description');
-      const priceInput = document.getElementById('item-price');
-      
-      if (!descriptionInput || !priceInput) {
-        console.error('No se encontraron los campos del formulario de item');
-        isProcessingForm = false;
-        return;
-      }
+      try {
+        isProcessingForm = true;
+        const descriptionInput = document.getElementById('item-description');
+        const priceInput = document.getElementById('item-price');
+        
+        if (!descriptionInput || !priceInput) {
+          showNotification('No se encontraron los campos del formulario', 'error');
+          return;
+        }
 
-      const description = descriptionInput.value.trim();
-      const price = parseFloat(priceInput.value);
+        const description = descriptionInput.value.trim();
+        const price = parseFloat(priceInput.value);
 
-      if (description && !isNaN(price) && price > 0) {
-        try {
+        if (description && !isNaN(price) && price > 0) {
           const newItem = await window.api.addItem({ 
             descripcion: description, 
             precio: price
           });
 
           productos.push(newItem);
-          
-          // Limpiar los campos
-          descriptionInput.value = '';
-          priceInput.value = '';
-          
           await refreshData();
+          showNotification('Producto guardado exitosamente');
           
-          alert('Producto guardado exitosamente');
-
-          // Restaurar el foco y la capacidad de edición
-          descriptionInput.readOnly = false;
-          priceInput.readOnly = false;
-          descriptionInput.focus();
-          
-        } catch (error) {
-          console.error('Error al guardar producto:', error);
-          alert('Error al guardar el producto');
+          await reinitializeForm('item-form');
+        } else {
+          showNotification('Por favor complete todos los campos correctamente', 'warning');
         }
-      } else {
-        alert('Por favor complete todos los campos correctamente');
+      } catch (error) {
+        console.error('Error al guardar producto:', error);
+        showNotification('Error al guardar el producto', 'error');
+      } finally {
+        isProcessingForm = false;
       }
-      isProcessingForm = false;
-    });
-
-    // Prevenir que el formulario pierda el foco
-    itemForm.addEventListener('click', (e) => {
-      e.stopPropagation();
     });
   }
 
@@ -633,32 +777,30 @@ function setupForms() {
     fiadoForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (isProcessingForm) return;
-      isProcessingForm = true;
-
-      if (!selectedPersonId) {
-        alert('Por favor seleccione una persona');
-        isProcessingForm = false;
-        return;
-      }
-
-      const fiadoItemInput = document.getElementById('fiado-item');
-      const personaInput = document.getElementById('fiado-persona');
-      const itemId = fiadoItemInput?.dataset.itemId;
-
-      if (!itemId) {
-        alert('Por favor seleccione un producto');
-        isProcessingForm = false;
-        return;
-      }
-
-      const producto = productos.find(p => p.id === parseInt(itemId));
-      if (!producto) {
-        alert('Producto no encontrado');
-        isProcessingForm = false;
-        return;
-      }
-
+      
       try {
+        isProcessingForm = true;
+
+        if (!selectedPersonId) {
+          showNotification('Por favor seleccione una persona', 'warning');
+          return;
+        }
+
+        const fiadoItemInput = document.getElementById('fiado-item');
+        const personaInput = document.getElementById('fiado-persona');
+        const itemId = fiadoItemInput?.dataset.itemId;
+
+        if (!itemId) {
+          showNotification('Por favor seleccione un producto', 'warning');
+          return;
+        }
+
+        const producto = productos.find(p => p.id === parseInt(itemId));
+        if (!producto) {
+          showNotification('Producto no encontrado', 'error');
+          return;
+        }
+
         const now = new Date();
         const fecha = now.toISOString().split('T')[0];
         const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -676,44 +818,30 @@ function setupForms() {
         };
 
         await window.api.addFiado(newFiado);
-        
-        // Limpiar formulario
-        fiadoItemInput.value = '';
-        personaInput.value = '';
-        selectedPersonId = null;
-        
         await refreshData();
+        showNotification('Pago pendiente registrado exitosamente');
         
-        alert('Pago pendiente registrado exitosamente');
-
-        // Restaurar el foco y la capacidad de edición
-        personaInput.readOnly = false;
-        fiadoItemInput.readOnly = false;
-        personaInput.focus();
-        
+        await reinitializeForm('fiado-form');
       } catch (error) {
         console.error('Error al registrar pago:', error);
-        alert('Error al registrar el pago');
+        showNotification('Error al registrar el pago', 'error');
+      } finally {
+        isProcessingForm = false;
       }
-      isProcessingForm = false;
-    });
-
-    // Prevenir que el formulario pierda el foco
-    fiadoForm.addEventListener('click', (e) => {
-      e.stopPropagation();
     });
   }
 
-  // Asegurar que los inputs mantengan su funcionalidad
+  // Asegurar que los inputs nunca estén bloqueados
   document.querySelectorAll('input[type="text"], input[type="number"], input[type="tel"]').forEach(input => {
+    input.readOnly = false;
+    
+    // Asegurar que el input nunca se bloquee
     input.addEventListener('focus', () => {
       input.readOnly = false;
     });
     
     input.addEventListener('blur', () => {
-      if (!isProcessingForm) {
-        input.readOnly = false;
-      }
+      input.readOnly = false;
     });
   });
 }
@@ -721,41 +849,35 @@ function setupForms() {
 // Menu and Sidebar Management
 function setupMenuHandlers() {
   const sidebar = document.getElementById('sidebar');
-  const menuToggle = document.querySelector('.menu-toggle');
+  const menuToggle = document.getElementById('menu-toggle');
   
   if (!menuToggle || !sidebar) {
     console.error('No se encontró el botón del menú o el sidebar');
     return;
   }
 
-  // Remove any existing click listeners
-  const newMenuToggle = menuToggle.cloneNode(true);
-  menuToggle.parentNode.replaceChild(newMenuToggle, menuToggle);
+  // Toggle sidebar on menu button click
+  menuToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('hidden');
+  });
 
-  // Add click listener to the new button
-  newMenuToggle.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Menu toggle clicked');
-    
-    // Force a reflow to ensure the transition works
-    sidebar.style.display = 'none';
-    sidebar.offsetHeight; // Force a reflow
-    sidebar.style.display = '';
-    
-    // Toggle sidebar visibility with a small delay to ensure the transition works
-    requestAnimationFrame(() => {
-      const isHidden = sidebar.classList.contains('-translate-x-full');
-      if (isHidden) {
-        sidebar.classList.remove('-translate-x-full');
-        console.log('Opening sidebar');
-      } else {
-        sidebar.classList.add('-translate-x-full');
-        console.log('Closing sidebar');
-      }
-      
-      console.log('Sidebar classes after toggle:', sidebar.classList.toString());
-    });
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth < 1024 && 
+        sidebar && 
+        !sidebar.contains(e.target) && 
+        !menuToggle.contains(e.target)) {
+      sidebar.classList.add('hidden');
+    }
+  });
+
+  // Handle window resize
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024) {
+      sidebar.classList.remove('hidden');
+    } else {
+      sidebar.classList.add('hidden');
+    }
   });
 
   // Handle menu item clicks
@@ -769,31 +891,15 @@ function setupMenuHandlers() {
       // Add active class to clicked item
       item.classList.add('active');
       
-      // Close sidebar on mobile/tablet after clicking with transition
-      if (window.innerWidth < 1025) {
-        requestAnimationFrame(() => {
-          sidebar.classList.add('-translate-x-full');
-        });
+      // Close sidebar on mobile after clicking
+      if (window.innerWidth < 1024) {
+        sidebar.classList.add('hidden');
       }
 
-      // Handle view switching based on menu item id
-      const menuId = item.id;
-      const viewId = menuId.replace('menu-', '') + '-view';
+      // Handle view switching
+      const viewId = item.id.replace('menu-', '') + '-view';
       showView(viewId);
     });
-  });
-
-  // Close sidebar when clicking outside on mobile/tablet
-  document.addEventListener('click', (event) => {
-    const isSmallScreen = window.innerWidth < 1025;
-    if (isSmallScreen && 
-        sidebar && 
-        !sidebar.contains(event.target) && 
-        !newMenuToggle.contains(event.target)) {
-      requestAnimationFrame(() => {
-        sidebar.classList.add('-translate-x-full');
-      });
-    }
   });
 }
 
@@ -833,10 +939,27 @@ function initializeResponsiveBehavior() {
 document.removeEventListener('click', () => {});
 
 // Ensure the menu handlers are set up when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, initializing menu handlers...');
-  setupMenuHandlers();
-  initializeResponsiveBehavior();
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('Renderer: DOM cargado, iniciando aplicación...');
+  try {
+    // Cargar datos iniciales
+    await refreshData();
+    
+    // Configurar event listeners
+    setupPersonaSearch();
+    setupItemSearch();
+    setupSearchHandlers();
+    setupMenuHandlers();
+    setupForms();
+    initializeResponsiveBehavior();
+
+    // Mostrar vista inicial
+    showView('home-view');
+    
+    console.log('Renderer: Aplicación inicializada correctamente');
+  } catch (error) {
+    console.error('Renderer: Error durante la inicialización:', error);
+  }
 });
 
 // Update UI with animations
@@ -1130,111 +1253,198 @@ async function showProfile(personId) {
 
   // Luego actualizar el contenido
   profileView.innerHTML = `
-    <div class="space-y-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fadeIn">
       <!-- Encabezado del Perfil -->
-      <div class="card">
-        <div class="flex justify-between items-start mb-6">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900">${person.nombre}</h2>
-            <p class="text-gray-500 flex items-center mt-1">
-              <i class="fas fa-phone mr-2"></i>
-              ${person.telefono}
-            </p>
+      <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-[1.02] transition-transform duration-300">
+        <div class="flex justify-between items-center">
+          <div class="space-y-2">
+            <div class="flex items-center space-x-4">
+              <div class="bg-white/20 rounded-full p-3">
+                <i class="fas fa-user text-2xl"></i>
+              </div>
+              <div>
+                <h2 class="text-3xl font-bold">${person.nombre}</h2>
+                <p class="flex items-center space-x-2 text-blue-100">
+                  <i class="fas fa-phone"></i>
+                  <span>${person.telefono || 'Sin teléfono'}</span>
+                </p>
+              </div>
+            </div>
           </div>
-          <button id="generate-pdf" class="btn btn-primary">
-            <i class="fas fa-file-pdf mr-2"></i>
-            Generar Factura
+          <button id="generate-pdf" class="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-lg transition-colors duration-200 flex items-center space-x-2 transform hover:scale-105">
+            <i class="fas fa-file-pdf text-xl"></i>
+            <span>Generar Factura</span>
           </button>
         </div>
+      </div>
 
-        <!-- Resumen de Estadísticas -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div class="bg-red-50 p-4 rounded-lg">
-            <h3 class="text-sm font-medium text-red-700">Deuda Actual</h3>
-            <p class="text-2xl font-bold text-red-600">$${formatNumber(totalActivo)}</p>
-            <p class="text-sm text-red-500">${cantidadFiadosActivos} pagos pendientes</p>
+      <!-- Resumen de Estadísticas -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow-md p-6 transform hover:scale-[1.02] transition-all duration-300 border-l-4 border-red-500">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">Deuda Actual</p>
+              <p class="text-2xl font-bold text-red-600 mt-1">$${formatNumber(totalActivo)}</p>
+            </div>
+            <div class="bg-red-100 rounded-full p-3">
+              <i class="fas fa-coins text-red-600 text-xl"></i>
+            </div>
           </div>
-          <div class="bg-green-50 p-4 rounded-lg">
-            <h3 class="text-sm font-medium text-green-700">Total Pagado</h3>
-            <p class="text-2xl font-bold text-green-600">$${formatNumber(totalPagado)}</p>
-            <p class="text-sm text-green-500">${cantidadFiadosPagados} pagos pagados</p>
-          </div>
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <h3 class="text-sm font-medium text-blue-700">Total Histórico</h3>
-            <p class="text-2xl font-bold text-blue-600">$${formatNumber(totalHistorico)}</p>
-            <p class="text-sm text-blue-500">${personaFiados.length} pagos totales</p>
+          <div class="mt-4 flex items-center text-sm text-red-500">
+            <i class="fas fa-clock mr-1"></i>
+            <span>${cantidadFiadosActivos} pagos pendientes</span>
           </div>
         </div>
 
-        <!-- Fiados Activos -->
-        <div class="space-y-6">
+        <div class="bg-white rounded-xl shadow-md p-6 transform hover:scale-[1.02] transition-all duration-300 border-l-4 border-green-500">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">Total Pagado</p>
+              <p class="text-2xl font-bold text-green-600 mt-1">$${formatNumber(totalPagado)}</p>
+            </div>
+            <div class="bg-green-100 rounded-full p-3">
+              <i class="fas fa-check-circle text-green-600 text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center text-sm text-green-500">
+            <i class="fas fa-check mr-1"></i>
+            <span>${cantidadFiadosPagados} pagos completados</span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 transform hover:scale-[1.02] transition-all duration-300 border-l-4 border-blue-500">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-600">Total Histórico</p>
+              <p class="text-2xl font-bold text-blue-600 mt-1">$${formatNumber(totalHistorico)}</p>
+            </div>
+            <div class="bg-blue-100 rounded-full p-3">
+              <i class="fas fa-history text-blue-600 text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center text-sm text-blue-500">
+            <i class="fas fa-chart-line mr-1"></i>
+            <span>${personaFiados.length} pagos totales</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagos Pendientes -->
+      <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
           <div class="flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-900">Pagos Pendientes</h3>
-            <div class="flex space-x-2">
-              <button id="select-all" class="btn btn-secondary">
-                <i class="fas fa-check-square mr-2"></i>
-                Seleccionar Todos
+            <div class="flex items-center space-x-3">
+              <div class="bg-blue-100 rounded-full p-2">
+                <i class="fas fa-clock text-blue-600"></i>
+              </div>
+              <h3 class="text-xl font-semibold text-gray-900">Pagos Pendientes</h3>
+            </div>
+            <div class="flex space-x-3">
+              <button id="select-all" class="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                <i class="fas fa-check-square text-gray-600"></i>
+                <span>Seleccionar Todos</span>
               </button>
-              <button id="marcar-pagados" class="btn btn-primary">
-                <i class="fas fa-check mr-2"></i>
-                Marcar como Pagados
+              <button id="marcar-pagados" class="flex items-center space-x-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200">
+                <i class="fas fa-check"></i>
+                <span>Marcar como Pagados</span>
               </button>
             </div>
           </div>
+        </div>
 
+        <div class="divide-y divide-gray-200">
           ${Object.values(fiadosPorFecha).length > 0 ? Object.values(fiadosPorFecha).map(grupo => `
-            <div class="bg-white rounded-lg border">
-              <div class="p-4 border-b bg-gray-50">
-        <div class="flex justify-between items-center">
-                  <h4 class="font-medium text-gray-900">
-                    ${formatDate(grupo.fecha, true)}
-                  </h4>
-                  <p class="font-semibold text-gray-900">Total: $${formatNumber(grupo.total)}</p>
+            <div class="animate-fadeIn">
+              <div class="bg-gray-50 px-6 py-4">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center space-x-3">
+                    <div class="bg-blue-100 rounded-full p-2">
+                      <i class="fas fa-calendar text-blue-600"></i>
+                    </div>
+                    <h4 class="font-medium text-gray-900">${formatDate(grupo.fecha, true)}</h4>
+                  </div>
+                  <p class="font-semibold text-gray-900">Total del día: $${formatNumber(grupo.total)}</p>
                 </div>
               </div>
-              <div class="divide-y">
+              <div class="divide-y divide-gray-200">
                 ${grupo.items.map(fiado => `
-                  <div class="p-4 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-              <input type="checkbox" 
-                             class="fiado-checkbox h-5 w-5 text-primary rounded border-gray-300 focus:ring-primary"
-                     data-fiado-id="${fiado.id}">
-            <div>
-                        <p class="font-medium">${fiado.producto.descripcion}</p>
-                        <p class="text-sm text-gray-500">Hora: ${fiado.hora || '--:--'}</p>
-            </div>
-          </div>
-                    <p class="font-semibold text-gray-900">$${formatNumber(fiado.producto.precio)}</p>
-        </div>
+                  <div class="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center space-x-4">
+                        <input type="checkbox" 
+                               class="fiado-checkbox w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                               data-fiado-id="${fiado.id}">
+                        <div>
+                          <p class="font-medium text-gray-900">${fiado.producto.descripcion}</p>
+                          <p class="text-sm text-gray-500 flex items-center space-x-2">
+                            <i class="fas fa-clock"></i>
+                            <span>${fiado.hora || '--:--'}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <p class="font-semibold text-gray-900">$${formatNumber(fiado.producto.precio)}</p>
+                    </div>
+                  </div>
                 `).join('')}
               </div>
             </div>
           `).join('') : `
-            <div class="text-center py-8 text-gray-500">
-              No hay pagos pendientes
+            <div class="p-8 text-center text-gray-500">
+              <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <i class="fas fa-check-circle text-3xl text-gray-400"></i>
+              </div>
+              <p class="text-lg">No hay pagos pendientes</p>
+              <p class="text-sm text-gray-400 mt-1">Todos los pagos están al día</p>
             </div>
           `}
         </div>
+      </div>
 
-        <!-- Historial de Pagos -->
-        <div class="mt-8">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Historial de Pagos</h3>
-          <div class="bg-white rounded-lg border divide-y">
-            ${fiadosPagados.length > 0 ? fiadosPagados.map(fiado => `
-              <div class="p-4 flex justify-between items-start hover:bg-gray-50">
-                <div>
-                  <p class="font-medium">${fiado.producto.descripcion}</p>
-                  <p class="text-sm text-gray-500">Comprado: ${formatDate(fiado.fecha, false)} ${fiado.hora || '--:--'}</p>
-                  <p class="text-sm text-green-600">Pagado: ${fiado.fechaPago ? formatDate(fiado.fechaPago, false) : ''} ${fiado.horaPago || '--:--'}</p>
-                </div>
-                <p class="font-semibold text-gray-900">$${formatNumber(fiado.producto.precio)}</p>
-              </div>
-            `).join('') : `
-              <div class="p-4 text-gray-500 text-center">
-                No hay pagos registrados
-              </div>
-            `}
+      <!-- Historial de Pagos -->
+      <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+          <div class="flex items-center space-x-3">
+            <div class="bg-green-100 rounded-full p-2">
+              <i class="fas fa-history text-green-600"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-900">Historial de Pagos</h3>
           </div>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+          ${fiadosPagados.length > 0 ? fiadosPagados.map(fiado => `
+            <div class="p-6 hover:bg-gray-50 transition-colors duration-200">
+              <div class="flex justify-between items-start">
+                <div class="space-y-1">
+                  <p class="font-medium text-gray-900">${fiado.producto.descripcion}</p>
+                  <div class="flex items-center space-x-4 text-sm">
+                    <p class="text-gray-500 flex items-center space-x-1">
+                      <i class="fas fa-shopping-cart"></i>
+                      <span>Comprado: ${formatDate(fiado.fecha, false)} ${fiado.hora || '--:--'}</span>
+                    </p>
+                    <p class="text-green-600 flex items-center space-x-1">
+                      <i class="fas fa-check-circle"></i>
+                      <span>Pagado: ${fiado.fechaPago ? formatDate(fiado.fechaPago, false) : ''} ${fiado.horaPago || '--:--'}</span>
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                    Pagado
+                  </span>
+                  <p class="font-semibold text-gray-900">$${formatNumber(fiado.producto.precio)}</p>
+                </div>
+              </div>
+            </div>
+          `).join('') : `
+            <div class="p-8 text-center text-gray-500">
+              <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <i class="fas fa-history text-3xl text-gray-400"></i>
+              </div>
+              <p class="text-lg">No hay historial de pagos</p>
+              <p class="text-sm text-gray-400 mt-1">Los pagos completados aparecerán aquí</p>
+            </div>
+          `}
         </div>
       </div>
     </div>
@@ -1571,187 +1781,6 @@ function updateAdminItemsList(filteredItems = productos) {
   });
 }
 
-
-document.getElementById('search-item').addEventListener('input', (event) => {
-  const searchTerm = event.target.value.toLowerCase();
-  const filteredItems = productos.filter(item => 
-    item.descripcion.toLowerCase().includes(searchTerm)
-  );
-  updateAdminItemsList(filteredItems); 
-});
-
-
-document.getElementById('menu-edit-items').addEventListener('click', () => {
-  showView('items-view');
-  updateAdminItemsList(); 
-});
-
-
-function showEditForm(e) {
-  const itemId = parseInt(e.target.dataset.itemId);
-  const item = productos.find(i => i.id === itemId);
-  if (!item) return;
-
-  currentEditingProductoId = itemId; 
-
-  const formContainer = document.getElementById('edit-item-form-container');
-  const descriptionInput = document.getElementById('edit-item-description');
-  const priceInput = document.getElementById('edit-item-price');
-  
-  descriptionInput.value = item.descripcion;
-  priceInput.value = item.precio;
-  
-  formContainer.classList.remove('hidden'); 
-}
-
-function hideEditForm() {
-  const formContainer = document.getElementById('edit-item-form-container');
-  formContainer.classList.add('hidden');
-  editingItemId = null;
-}
-
-window.addEventListener('load', () => {
-  console.log('Ventana cargada completamente');
-});
-
-
-
-function getPendientesPorDia(fiados) {
-  const countsPorDia = {};
-  fiados.forEach(f => {
-    const fecha = f.fecha; 
-    if (!countsPorDia[fecha]) {
-      countsPorDia[fecha] = 0;
-    }
-    countsPorDia[fecha]++;
-  });
-  return countsPorDia;
-}
-
-document.getElementById('toggle-sidebar')?.addEventListener('click', () => {
-  const sidebar = document.getElementById('sidebar');
-  sidebar.classList.toggle('-translate-x-full'); 
-});
-
-document.addEventListener('click', (event) => {
-  const sidebar = document.getElementById('sidebar');
-  const toggleButton = document.querySelector('.menu-toggle');
-  
-  if (!sidebar.contains(event.target) && !toggleButton.contains(event.target)) {
-    sidebar.classList.add('-translate-x-full'); 
-  }
-});
-
-document.getElementById('menu-edit-items').addEventListener('click', () => {
-  showView('items-view'); 
-});
-
-document.querySelectorAll('.profile-name').forEach(profileName => {
-  profileName.addEventListener('click', (e) => {
-    const personId = e.target.dataset.personId; 
-    console.log(`Mostrando perfil para la persona con ID: ${personId}`); 
-    showProfile(personId); 
-  });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.profile-name').forEach(profileName => {
-    profileName.addEventListener('click', (e) => {
-      const personId = e.target.dataset.personId; 
-      console.log(`Mostrando perfil para la persona con ID: ${personId}`); 
-      showProfile(personId); 
-    });
-  });
-});
-
-async function updateSalesSummary() {
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-
-  let dailySales = 0;
-  let monthlySales = 0;
-
-  fiados.forEach(fiado => {
-      const fiadoDate = new Date(fiado.fecha);
-    const precioVenta = fiado.producto.precio;
-
-    // Ventas del día
-      if (fiadoDate.toDateString() === today.toDateString()) {
-        dailySales += precioVenta;
-      }
-
-    // Ventas del mes
-    if (fiadoDate.getMonth() === currentMonth && 
-        fiadoDate.getFullYear() === currentYear) {
-        monthlySales += precioVenta;
-    }
-  });
-
-  // Actualizar los elementos del DOM
-  const updateElement = (id, value) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.textContent = `$${formatNumber(value)}`;
-    }
-  };
-
-  updateElement('daily-sales', dailySales);
-  updateElement('monthly-sales', monthlySales);
-}
-
-function generateReport() {
-  const productSales = {};
-  const personConsumption = {};
-  let totalDebt = 0;
-  let totalSalesYear = 0;
-
-  fiados.forEach(fiado => {
-    const fiadoDate = new Date(fiado.fecha);
-    const precioVenta = fiado.producto.precio;
-
-    // Acumular ventas por producto
-    if (!productSales[fiado.producto.descripcion]) {
-      productSales[fiado.producto.descripcion] = 0;
-    }
-    productSales[fiado.producto.descripcion] += precioVenta;
-
-    // Acumular consumo por persona
-    if (!personConsumption[fiado.personaId]) {
-      personConsumption[fiado.personaId] = 0;
-    }
-    personConsumption[fiado.personaId] += precioVenta;
-
-    // Calcular deuda total pendiente
-    if (fiado.estado === 'activo') {
-      totalDebt += precioVenta;
-    }
-
-    // Calcular ventas del año
-    if (fiadoDate.getFullYear() === currentYear) {
-      totalSalesYear += precioVenta;
-    }
-  });
-
-  // Obtener top 5 productos más vendidos
-  const topProducts = Object.entries(productSales)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  // Obtener personas que más consumen
-  const topConsumers = Object.entries(personConsumption)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  // Mostrar reporte
-  console.log('Top 5 Productos Más Vendidos:', topProducts);
-  console.log('Top 5 Personas que Más Consumen:', topConsumers);
-  console.log('Deuda Total Pendiente:', totalDebt);
-  console.log('Ventas Totales del Año:', totalSalesYear);
-
-  // Aquí puedes actualizar el DOM o generar un PDF con el reporte
-}
-
 // Función para formatear números con separadores de miles
 function formatNumber(num) {
   return num.toLocaleString('es-AR', {
@@ -1760,79 +1789,76 @@ function formatNumber(num) {
   });
 }
 
-console.log('Fiados:', fiados);
-console.log('Items:', productos);
+// Función para actualizar la lista de productos en el panel de administración
+function updateAdminItemsList() {
+  const adminItemsList = document.getElementById('admin-items-list');
+  if (!adminItemsList) return;
 
-async function migrarFiadosSinPrecioHistorico() {
-  const db = await window.api.getDatabase();
-  let needsUpdate = false;
+  adminItemsList.innerHTML = productos.length > 0 ? productos.map(item => `
+    <div class="bg-white rounded-lg border p-4 mb-4 hover:shadow-md transition-shadow">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-medium text-gray-900">${item.descripcion}</h3>
+          <p class="text-lg font-bold text-primary mt-1">$${formatNumber(item.precio)}</p>
+        </div>
+        <div class="flex space-x-2">
+          <button class="btn btn-icon btn-secondary edit-item-btn" data-item-id="${item.id}">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-icon btn-danger delete-item-btn" data-item-id="${item.id}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('') : `
+    <div class="text-center py-8 text-gray-500">
+      No hay productos registrados
+    </div>
+  `;
 
-  db.fiados = db.fiados.map(fiado => {
-    // Si el fiado ya tiene la nueva estructura, lo dejamos como está
-    if (fiado.producto) {
-      return fiado;
-    }
-
-    // Si es un fiado antiguo, lo convertimos al nuevo formato
-      needsUpdate = true;
-      const item = db.items.find(i => i.id === fiado.itemId);
-    console.log(`Migrando fiado ${fiado.id} - Item ${fiado.itemId} - Precio ${item?.precio}`);
-    
-      return {
-        ...fiado,
-      producto: {
-        id: item.id,
-        descripcion: item.descripcion,
-        precio: fiado.precioHistorico || item.precio
-      },
-      // Eliminamos los campos antiguos
-      itemId: undefined,
-      precioHistorico: undefined
-    };
+  // Agregar event listeners para los botones de editar y eliminar
+  adminItemsList.querySelectorAll('.edit-item-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const itemId = parseInt(button.dataset.itemId);
+      showEditModal(itemId);
+    });
   });
 
-  if (needsUpdate) {
-    console.log('Actualizando base de datos con nueva estructura...');
-    await window.api.updateDatabase(db);
-    fiados = db.fiados;
-    console.log('Base de datos actualizada');
-    await refreshData();
-  }
+  adminItemsList.querySelectorAll('.delete-item-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const itemId = parseInt(button.dataset.itemId);
+      if (confirm('¿Está seguro de eliminar este producto?')) {
+        try {
+          const db = await window.api.getDatabase();
+          db.items = db.items.filter(item => item.id !== itemId);
+          await window.api.updateDatabase(db);
+          productos = db.items;
+          await updateUI();
+          alert('Producto eliminado exitosamente');
+        } catch (error) {
+          console.error('Error al eliminar producto:', error);
+          alert('Error al eliminar el producto');
+        }
+      }
+    });
+  });
 }
 
-// Asegurar que los formularios de creación funcionen correctamente
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('DOM cargado, configurando event listeners...');
-  
-  // Configurar event listeners del menú
-  document.getElementById('menu-home')?.addEventListener('click', () => {
-    showView('home-view');
-  });
-
-  document.getElementById('menu-create')?.addEventListener('click', () => {
-    showView('create-view');
-  });
-
-  document.getElementById('menu-edit-items')?.addEventListener('click', () => {
-    showView('items-view');
-    updateAdminItemsList();
-  });
-
-  // Configurar formularios
-  setupForms();
-
-  // Inicializar la aplicación
+// Función para mostrar notificaciones
+async function showNotification(message, type = 'success') {
   try {
-    console.log('Cargando datos iniciales...');
-    await refreshData();
-    console.log('Datos iniciales cargados:', { personas, productos, fiados });
-    
-    // Inicializar la aplicación
-    await init();
-    console.log('Aplicación inicializada correctamente');
-  } catch (error) {
-    console.error('Error durante la inicialización:', error);
-    alert('Error al iniciar la aplicación');
-  }
-});
+    const options = {
+      type: type === 'error' ? 'error' : 
+            type === 'warning' ? 'warning' : 'info',
+      title: type === 'error' ? 'Error' :
+             type === 'warning' ? 'Advertencia' : 'Éxito',
+      message: message,
+      buttons: ['OK']
+    };
 
+    await window.api.showMessageBox(options);
+  } catch (error) {
+    console.error('Error al mostrar notificación:', error);
+  }
+}

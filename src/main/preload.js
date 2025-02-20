@@ -4,65 +4,65 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
   getDatabase: async () => {
-    console.log('Solicitando base de datos...');
+    console.log('Renderer: Solicitando base de datos...');
     try {
       const result = await ipcRenderer.invoke('get-database');
-      console.log('Base de datos recibida:', {
-        personas: result.personas.length,
-        items: result.items.length,
-        fiados: result.fiados.length
+      console.log('Renderer: Base de datos recibida:', {
+        personas: result?.personas?.length || 0,
+        items: result?.items?.length || 0,
+        fiados: result?.fiados?.length || 0
       });
       return result;
     } catch (error) {
-      console.error('Error al obtener base de datos:', error);
+      console.error('Renderer: Error al obtener base de datos:', error);
       throw error;
     }
   },
   
   addPerson: async (person) => {
-    console.log('Enviando solicitud para agregar persona:', person);
+    console.log('Renderer: Enviando solicitud para agregar persona:', person);
     try {
       const result = await ipcRenderer.invoke('add-person', person);
-      console.log('Persona agregada:', result);
+      console.log('Renderer: Persona agregada:', result);
       return result;
     } catch (error) {
-      console.error('Error al agregar persona:', error);
+      console.error('Renderer: Error al agregar persona:', error);
       throw error;
     }
   },
   
   addItem: async (item) => {
-    console.log('Enviando solicitud para agregar item:', item);
+    console.log('Renderer: Enviando solicitud para agregar item:', item);
     try {
       const result = await ipcRenderer.invoke('add-item', item);
-      console.log('Item agregado:', result);
+      console.log('Renderer: Item agregado:', result);
       return result;
     } catch (error) {
-      console.error('Error al agregar item:', error);
+      console.error('Renderer: Error al agregar item:', error);
       throw error;
     }
   },
   
   addFiado: async (fiado) => {
-    console.log('Enviando solicitud para agregar fiado:', fiado);
+    console.log('Renderer: Enviando solicitud para agregar fiado:', fiado);
     try {
       const result = await ipcRenderer.invoke('add-fiado', fiado);
-      console.log('Fiado agregado:', result);
+      console.log('Renderer: Fiado agregado:', result);
       return result;
     } catch (error) {
-      console.error('Error al agregar fiado:', error);
+      console.error('Renderer: Error al agregar fiado:', error);
       throw error;
     }
   },
   
   updateDatabase: async (data) => {
-    console.log('Enviando solicitud para actualizar base de datos');
+    console.log('Renderer: Enviando solicitud para actualizar base de datos');
     try {
       const result = await ipcRenderer.invoke('update-database', data);
-      console.log('Base de datos actualizada:', result);
+      console.log('Renderer: Base de datos actualizada');
       return result;
     } catch (error) {
-      console.error('Error al actualizar base de datos:', error);
+      console.error('Renderer: Error al actualizar base de datos:', error);
       throw error;
     }
   },
@@ -82,6 +82,18 @@ contextBridge.exposeInMainWorld('api', {
   reloadWindow: () => {
     console.log('Solicitando recarga de ventana');
     ipcRenderer.send('reload-window');
+  },
+  
+  showMessageBox: async (options) => {
+    console.log('Renderer: Solicitando mostrar diálogo:', options);
+    try {
+      const result = await ipcRenderer.invoke('show-message-box', options);
+      console.log('Renderer: Diálogo mostrado:', result);
+      return result;
+    } catch (error) {
+      console.error('Renderer: Error al mostrar diálogo:', error);
+      throw error;
+    }
   }
 });
 
