@@ -5,7 +5,10 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron  --trace-warnings .",
-    "build": "electron-builder --win portable"
+    "build": "electron-builder --win portable --x64",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "build": {
     "appId": "com.controlfiados.app",
@@ -18,15 +21,35 @@
       "package.json"
     ],
     "win": {
-      "target": "portable",
-      "icon": "src/renderer/assets/icon.png"
-    }
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "src/renderer/assets/icon.png",
+      "artifactName": "${productName}-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    },
+    "asar": true,
+    "compression": "maximum"
   },
   "author": "Tu Nombre",
   "license": "ISC",
   "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.24.0",
+    "@babel/plugin-transform-runtime": "^7.24.0",
+    "@babel/runtime": "^7.24.0",
+    "babel-jest": "^29.7.0",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4"
   },

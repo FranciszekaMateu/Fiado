@@ -1,30 +1,87 @@
 const { contextBridge, ipcRenderer } = require('electron');
-const fs = require('fs');
-const path = require('path');
 
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
-  getDatabase: () => {
-    const dbPath = path.join(__dirname, '..', 'data', 'database.json');
+  getDatabase: async () => {
+    console.log('Solicitando base de datos...');
     try {
-      return JSON.parse(fs.readFileSync(dbPath, 'utf-8'));
+      const result = await ipcRenderer.invoke('get-database');
+      console.log('Base de datos recibida:', {
+        personas: result.personas.length,
+        items: result.items.length,
+        fiados: result.fiados.length
+      });
+      return result;
     } catch (error) {
-      console.error('Error al leer el archivo de base de datos:', error);
-      throw error; 
+      console.error('Error al obtener base de datos:', error);
+      throw error;
     }
   },
-  addPerson: (person) => ipcRenderer.invoke('add-person', person),
-  addItem: (item) => ipcRenderer.invoke('add-item', item),
-  addFiado: (fiado) => ipcRenderer.invoke('add-fiado', fiado),
+  
+  addPerson: async (person) => {
+    console.log('Enviando solicitud para agregar persona:', person);
+    try {
+      const result = await ipcRenderer.invoke('add-person', person);
+      console.log('Persona agregada:', result);
+      return result;
+    } catch (error) {
+      console.error('Error al agregar persona:', error);
+      throw error;
+    }
+  },
+  
+  addItem: async (item) => {
+    console.log('Enviando solicitud para agregar item:', item);
+    try {
+      const result = await ipcRenderer.invoke('add-item', item);
+      console.log('Item agregado:', result);
+      return result;
+    } catch (error) {
+      console.error('Error al agregar item:', error);
+      throw error;
+    }
+  },
+  
+  addFiado: async (fiado) => {
+    console.log('Enviando solicitud para agregar fiado:', fiado);
+    try {
+      const result = await ipcRenderer.invoke('add-fiado', fiado);
+      console.log('Fiado agregado:', result);
+      return result;
+    } catch (error) {
+      console.error('Error al agregar fiado:', error);
+      throw error;
+    }
+  },
+  
   updateDatabase: async (data) => {
-    const dbPath = path.join(__dirname,'..', 'data', 'database.json');
+    console.log('Enviando solicitud para actualizar base de datos');
     try {
-      fs.writeFileSync(dbPath, JSON.stringify(data, null, 2)); 
+      const result = await ipcRenderer.invoke('update-database', data);
+      console.log('Base de datos actualizada:', result);
+      return result;
     } catch (error) {
-      console.error('Error al escribir en el archivo de base de datos:', error);
-      throw error; 
+      console.error('Error al actualizar base de datos:', error);
+      throw error;
     }
   },
-  generatePDF: (data) => ipcRenderer.invoke('generate-pdf', data),
-  reloadWindow: () => ipcRenderer.send('reload-window'),
+  
+  generatePDF: async (data) => {
+    console.log('Enviando solicitud para generar PDF');
+    try {
+      const result = await ipcRenderer.invoke('generate-pdf', data);
+      console.log('PDF generado:', result);
+      return result;
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      throw error;
+    }
+  },
+  
+  reloadWindow: () => {
+    console.log('Solicitando recarga de ventana');
+    ipcRenderer.send('reload-window');
+  }
 });
 
