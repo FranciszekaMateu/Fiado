@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { readDatabase, writeDatabase } = require('./storage');
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
 
 let mainWindow = null;
 let appData = null;
@@ -141,6 +143,119 @@ app.whenReady().then(async () => {
       if (mainWindow) {
         mainWindow.blur();
         mainWindow.focus();
+      }
+    });
+
+    ipcMain.handle('generate-pdf', async (event, data) => {
+      try {
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+          title: 'Guardar Factura PDF',
+          defaultPath: path.join(app.getPath('documents'), `factura_${data.cliente.nombre}_${data.fecha}.pdf`),
+          filters: [
+            { name: 'PDF', extensions: ['pdf'] }
+          ]
+        });
+
+        if (canceled || !filePath) {
+          return null;
+        }
+
+        // Crear nuevo documento PDF
+        const doc = new PDFDocument();
+        const writeStream = fs.createWriteStream(filePath);
+        doc.pipe(writeStream);
+
+        // Configurar fuente y tamaños
+        doc.font('Helvetica-Bold');
+        
+        // Encabezado
+        doc.fontSize(20)
+           .text('FACTURA DE PAGOS PENDIENTES', { align: 'center' })
+           .moveDown();
+
+        // Línea separadora
+        doc.moveTo(50, doc.y)
+           .lineTo(550, doc.y)
+           .stroke()
+           .moveDown();
+
+        // Información del cliente
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .text('INFORMACIÓN DEL CLIENTE')
+           .moveDown(0.5)
+           .font('Helvetica')
+           .text(`Nombre: ${data.cliente.nombre}`)
+           .text(`Teléfono: ${data.cliente.telefono}`)
+           .text(`Fecha de emisión: ${data.fecha}`)
+           .text(`Hora: ${data.hora}`)
+           .moveDown();
+
+        // Línea separadora
+        doc.moveTo(50, doc.y)
+           .lineTo(550, doc.y)
+           .stroke()
+           .moveDown();
+
+        // Detalle de compras
+        doc.fontSize(12)
+           .font('Helvetica-Bold')
+           .text('DETALLE DE COMPRAS PENDIENTES')
+           .moveDown();
+
+        // Iterar sobre cada grupo de fecha
+        data.comprasPorFecha.forEach(grupo => {
+          doc.font('Helvetica-Bold')
+             .text(`Fecha: ${grupo.fecha}`)
+             .moveDown(0.5);
+
+          // Encabezados de columna
+          doc.font('Helvetica')
+             .text('Descripción', 50, doc.y, { width: 250 })
+             .text('Hora', 300, doc.y, { width: 100 })
+             .text('Precio', 400, doc.y, { width: 100, align: 'right' })
+             .moveDown();
+
+          // Items del grupo
+          grupo.items.forEach(item => {
+            const y = doc.y;
+            doc.text(item.descripcion, 50, y, { width: 250 })
+               .text(item.hora, 300, y, { width: 100 })
+               .text(`$${item.precio.toFixed(2)}`, 400, y, { width: 100, align: 'right' });
+            doc.moveDown();
+          });
+
+          // Subtotal del grupo
+          doc.moveDown()
+             .font('Helvetica-Bold')
+             .text(`Total del día: $${grupo.total.toFixed(2)}`, { align: 'right' })
+             .moveDown();
+
+          // Línea separadora
+          doc.moveTo(50, doc.y)
+             .lineTo(550, doc.y)
+             .stroke()
+             .moveDown();
+        });
+
+        // Total general
+        doc.fontSize(14)
+           .font('Helvetica-Bold')
+           .text(`TOTAL GENERAL A PAGAR: $${data.totalGeneral.toFixed(2)}`, { align: 'right' })
+           .moveDown();
+
+        // Finalizar el documento
+        doc.end();
+
+        // Esperar a que el archivo se escriba completamente
+        return new Promise((resolve, reject) => {
+          writeStream.on('finish', () => resolve(filePath));
+          writeStream.on('error', reject);
+        });
+
+      } catch (error) {
+        console.error('Error al generar PDF:', error);
+        throw error;
       }
     });
 

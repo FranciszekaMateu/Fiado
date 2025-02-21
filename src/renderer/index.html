@@ -63,33 +63,31 @@
                     <div class="stats-grid">
                         <div class="stats-card">
                             <div class="stats-info">
-                                <h3>Ventas del Día</h3>
-                                <p id="daily-sales">$0</p>
+                                <h3>Ganancias del Día</h3>
+                                <p id="daily-earnings">$0.00</p>
                             </div>
-                            <div class="stats-icon">
-                                <i class="fas fa-chart-line"></i>
+                            <div class="stats-icon green">
+                                <i class="fas fa-coins"></i>
                             </div>
                         </div>
 
                         <div class="stats-card">
                             <div class="stats-info">
-                                <h3>Ventas del Mes</h3>
-                                <p id="monthly-sales">$0</p>
+                                <h3>Ganancias del Mes</h3>
+                                <p id="monthly-earnings">$0.00</p>
                             </div>
                             <div class="stats-icon green">
-                                <i class="fas fa-calendar"></i>
+                                <i class="fas fa-calendar-alt"></i>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="transactions-section">
+                        <div class="transactions-header">
                             <h2>Pagos Pendientes</h2>
                         </div>
-                        <div class="card-body">
-                            <ul id="fiados-recientes" class="fiados-list">
-                                <!-- Los fiados pendientes se insertarán aquí -->
-                            </ul>
+                        <div class="transaction-list" id="pending-payments-list">
+                            <!-- Los pagos pendientes se cargarán aquí -->
                         </div>
                     </div>
                 </div>
@@ -202,58 +200,74 @@
                     </div>
                 </div>
 
-                <div id="items-view" class="view hidden">
-                    <div class="card">
-                        <div class="card-header with-search">
-                            <h2>Administrar Productos</h2>
-                            <div class="search-wrapper compact">
-                                <i class="fas fa-search search-icon"></i>
-                                <input type="text" 
-                                       id="search-item" 
-                                       placeholder="Buscar producto...">
+                <div id="items-view" class="hidden">
+                    <div class="container mx-auto px-4 py-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-900">Productos</h2>
+                            <div class="flex gap-4">
+                                <div class="relative">
+                                    <input type="text" id="search-items" placeholder="Buscar productos..." 
+                                           class="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                </div>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <div id="admin-items-list" class="items-list">
-                                <!-- Los productos se insertarán aquí -->
-                            </div>
+                        
+                        <div id="admin-items-list" class="items-list">
+                            <!-- Los items se cargarán dinámicamente aquí -->
                         </div>
                     </div>
                 </div>
 
                 <div id="profile-view" class="view hidden">
-                    <!-- El contenido del perfil se insertará dinámicamente -->
+                    <!-- El contenido del perfil se insertará dinámicamente aquí -->
                 </div>
             </div>
         </main>
     </div>
 
     <!-- Modales -->
-    <div id="edit-modal" class="modal">
+    <div id="edit-item-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Editar Producto</h3>
-                <button class="close-btn" onclick="closeModal()">
+                <h3 class="text-xl font-semibold">Editar Producto</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700 transition-colors">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form id="edit-form">
-                <div class="form-group">
-                    <label>Descripción</label>
-                    <input type="text" id="edit-description" required>
-                </div>
-                <div class="form-group">
-                    <label>Precio</label>
-                    <div class="price-input">
-                        <span>$</span>
-                        <input type="number" id="edit-price" step="0.01" min="0" required>
+            <div class="modal-body">
+                <form id="edit-item-form">
+                    <div class="form-group">
+                        <label for="edit-item-description" class="form-label">Descripción</label>
+                        <input type="text" 
+                               id="edit-item-description" 
+                               class="form-input"
+                               placeholder="Ingrese la descripción del producto"
+                               required>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn secondary" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn primary">Guardar Cambios</button>
-                </div>
-            </form>
+                    <div class="form-group">
+                        <label for="edit-item-price" class="form-label">Precio</label>
+                        <div class="price-input">
+                            <span>$</span>
+                            <input type="number" 
+                                   id="edit-item-price" 
+                                   class="form-input"
+                                   placeholder="0.00"
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" id="cancel-edit" class="btn secondary">
+                            <i class="fas fa-times mr-2"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn primary">
+                            <i class="fas fa-save mr-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
