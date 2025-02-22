@@ -131,10 +131,15 @@
                                 <form id="item-form">
                                     <div class="form-group">
                                         <label for="item-description">Descripción</label>
-                                        <input type="text" 
-                                               id="item-description" 
-                                               placeholder="Ingrese la descripción del producto"
-                                               required>
+                                        <div class="search-wrapper">
+                                            <i class="fas fa-search search-icon"></i>
+                                            <input type="text" 
+                                                   id="item-description" 
+                                                   placeholder="Buscar o agregar producto..."
+                                                   autocomplete="off"
+                                                   required>
+                                            <div id="items-search-suggestions" class="suggestions"></div>
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <label for="item-price">Precio</label>
@@ -163,7 +168,7 @@
                             <div class="card-body">
                                 <form id="fiado-form">
                                     <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group" style="flex: 1; margin-right: 1rem;">
                                             <label for="fiado-persona">Persona</label>
                                             <div class="search-wrapper">
                                                 <i class="fas fa-search search-icon"></i>
@@ -175,9 +180,7 @@
                                                 <div id="personas-suggestions" class="suggestions"></div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
+                                        <div class="form-group" style="flex: 1;">
                                             <label for="fiado-item">Producto</label>
                                             <div class="search-wrapper">
                                                 <i class="fas fa-search search-icon"></i>
@@ -200,22 +203,17 @@
                     </div>
                 </div>
 
-                <div id="items-view" class="hidden">
-                    <div class="container mx-auto px-4 py-8">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">Productos</h2>
-                            <div class="flex gap-4">
-                                <div class="relative">
-                                    <input type="text" id="search-items" placeholder="Buscar productos..." 
-                                           class="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                </div>
+                <div id="items-view" class="view hidden">
+                    <div class="products-container">
+                        <div class="products-header">
+                            <h2>Administración de Productos</h2>
+                            <div class="search-container">
+                                <input type="text" id="search-items" placeholder="Buscar productos...">
+                                <i class="fas fa-search"></i>
                             </div>
                         </div>
                         
-                        <div id="admin-items-list" class="items-list">
-                            <!-- Los items se cargarán dinámicamente aquí -->
-                        </div>
+                        <div id="admin-items-list" class="products-list"></div>
                     </div>
                 </div>
 

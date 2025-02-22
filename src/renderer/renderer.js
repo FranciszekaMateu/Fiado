@@ -277,19 +277,13 @@ function setupSearchHandlers() {
             Productos
           </div>
           ${productosMatches.map(producto => `
-            <div class="suggestion-item" data-product-id="${producto.id}">
+            <div class="suggestion-item" data-item-id="${producto.id}" style="cursor: pointer;">
               <div class="suggestion-main">
                 <div class="suggestion-title">${producto.descripcion}</div>
                 <div class="suggestion-subtitle">
                   <i class="fas fa-tag"></i>
-                  Stock disponible
+                  $${formatNumber(producto.precio)}
                 </div>
-              </div>
-              <div class="suggestion-meta">
-                <span class="suggestion-price">$${formatNumber(producto.precio)}</span>
-                <span class="suggestion-badge product">
-                  <i class="fas fa-box"></i>
-                </span>
               </div>
             </div>
           `).join('')}
@@ -594,102 +588,118 @@ function setupPersonaSearch() {
     });
 }
 
-// Configurar búsqueda de productos
-function setupProductoSearch() {
-    const input = document.getElementById('fiado-item');
-    const suggestionsContainer = document.getElementById('items-suggestions');
+// Actualizar la función setupProductSelection (para el buscador DENTRO de "Registrar Pago Pendiente")
+function setupProductSelection() {
+  const fiadoItemInput = document.getElementById('fiado-item');
+  const itemsSuggestions = document.getElementById('items-suggestions');
 
-    if (!input || !suggestionsContainer) {
-        console.error('No se encontraron los elementos necesarios para la búsqueda de productos');
-        return;
+  if (!fiadoItemInput || !itemsSuggestions) {
+    console.error('No se encontraron los elementos necesarios para la búsqueda de productos');
+    return;
+  }
+
+  // Remover listeners anteriores clonando el input para que quede "limpio"
+  const newInput = fiadoItemInput.cloneNode(true);
+  fiadoItemInput.parentNode.replaceChild(newInput, fiadoItemInput);
+
+  // Forzar que el contenedor de sugerencias se muestre por encima y reciba eventos de clic
+  itemsSuggestions.style.position = 'absolute';
+  itemsSuggestions.style.zIndex = '2000';
+  itemsSuggestions.style.pointerEvents = 'auto';
+
+  // Listener para el input: genera las sugerencias dinámicamente
+  newInput.addEventListener('input', function () {
+    const searchTerm = newInput.value.toLowerCase().trim();
+    const wrapper = newInput.closest('.search-wrapper');
+
+    if (!searchTerm) {
+      if (wrapper) wrapper.classList.remove('active');
+      itemsSuggestions.classList.remove('show');
+      newInput.removeAttribute('data-item-id');
+      return;
     }
 
-     // Remover listeners anteriores
-    const newInput = input.cloneNode(true);
-    input.parentNode.replaceChild(newInput, input);
+    // Buscar coincidencias en el array global "productos"
+    const matches = productos.filter(p =>
+      p.descripcion.toLowerCase().includes(searchTerm)
+    ).slice(0, 5);
 
-
-    newInput.addEventListener('input', () => {
-        const searchTerm = newInput.value.toLowerCase().trim();
-        const wrapper = newInput.closest('.search-wrapper');
-
-        if (!searchTerm) {
-            wrapper.classList.remove('active');
-            suggestionsContainer.classList.remove('show');
-             newInput.dataset.itemId = ''; // Limpiar el data-item-id
-            return;
-        }
-
-        const matches = productos.filter(p =>
-            p.descripcion.toLowerCase().includes(searchTerm)
-        ).slice(0, 5);
-
-        suggestionsContainer.innerHTML = '';
-
-        if (matches.length > 0) {
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'suggestions-group';
-            groupDiv.innerHTML = `
-                <div class="suggestions-group-title">
-                    <i class="fas fa-boxes"></i>
-                    Productos
-                </div>
-                ${matches.map(producto => `
+    if (matches.length > 0) {
+      let html = `<div class="suggestions-group">
+                    <div class="suggestions-group-title">
+                      <i class="fas fa-boxes"></i> Productos
+                    </div>`;
+      html += matches.map(producto => `
                     <div class="suggestion-item" data-product-id="${producto.id}">
-                        <div class="suggestion-main">
-                            <div class="suggestion-title">${producto.descripcion}</div>
-                            <div class="suggestion-subtitle">
-                                <i class="fas fa-tag"></i>
-                                $${formatNumber(producto.precio)}
-                            </div>
+                      <div class="suggestion-main">
+                        <div class="suggestion-title">${producto.descripcion}</div>
+                        <div class="suggestion-subtitle">
+                          <i class="fas fa-tag"></i> $${formatNumber(producto.precio)}
                         </div>
-                        <div class="suggestion-meta">
-                            <span class="suggestion-badge product">
-                                <i class="fas fa-box"></i>
-                            </span>
-                        </div>
+                      </div>
+                      <div class="suggestion-meta">
+                        <span class="suggestion-badge product"><i class="fas fa-box"></i></span>
+                      </div>
                     </div>
-                `).join('')}
-            `;
-            suggestionsContainer.appendChild(groupDiv);
+                  `).join('');
+      html += `</div>`;
+      itemsSuggestions.innerHTML = html;
 
-            // Agregar event listeners a los items
-            suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const productId = parseInt(item.dataset.productId);
-                    const selectedProduct = productos.find(p => p.id === productId);
-                    if (selectedProduct) {
-                         newInput.value = selectedProduct.descripcion;
-                         newInput.dataset.itemId = selectedProduct.id; // Guardar el ID del producto
-                        wrapper.classList.remove('active');
-                        suggestionsContainer.classList.remove('show');
-                    }
-                });
-            });
+      // Agregar event listener individual a cada sugerencia
+      const suggestionItems = itemsSuggestions.querySelectorAll('.suggestion-item');
+      suggestionItems.forEach(item => {
+        item.addEventListener('click', function (e) {
+          e.stopPropagation();
+          const productId = item.getAttribute('data-product-id');
+          const selectedProduct = productos.find(p => parseInt(p.id) === parseInt(productId));
+          if (selectedProduct) {
+            newInput.value = selectedProduct.descripcion;
+            newInput.setAttribute('data-item-id', selectedProduct.id); // Guardar el ID
+            if (wrapper) wrapper.classList.remove('active');
+            itemsSuggestions.classList.remove('show');
+          }
+        });
+      });
+    } else {
+      itemsSuggestions.innerHTML = `
+        <div class="suggestions-empty">
+          <i class="fas fa-box-open"></i>
+          <p>No se encontraron productos</p>
+          <p class="text-sm text-gray-400 mt-1">Intenta con otra descripción</p>
+        </div>`;
+    }
 
-        } else {
-            suggestionsContainer.innerHTML = `
-                <div class="suggestions-empty">
-                    <i class="fas fa-box-open"></i>
-                    <p>No se encontraron productos</p>
-                    <p class="text-sm text-gray-400 mt-1">
-                        Intenta con otra descripción
-                    </p>
-                </div>
-            `;
-        }
-         wrapper.classList.add('active');
-        suggestionsContainer.classList.add('show');
-    });
+    if (wrapper) wrapper.classList.add('active');
+    itemsSuggestions.classList.add('show');
+  });
 
-      // Cerrar sugerencias al hacer click fuera
-    document.addEventListener('click', (e) => {
-        const wrapper = newInput.closest('.search-wrapper');
-        if (wrapper && !wrapper.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-            wrapper.classList.remove('active');
-            suggestionsContainer.classList.remove('show');
-        }
-    });
+  // Listener para cerrar las sugerencias si se hace clic fuera del input y de su contenedor
+  document.addEventListener('click', function (e) {
+    const wrapper = newInput.closest('.search-wrapper');
+    if (wrapper && !wrapper.contains(e.target) && !itemsSuggestions.contains(e.target)) {
+      wrapper.classList.remove('active');
+      itemsSuggestions.classList.remove('show');
+    }
+  }, true); // Usar fase de captura para que se ejecute antes de otros listeners
+}
+
+// En la función que muestra las sugerencias de productos
+function showProductSuggestions(searchTerm) {
+  const matches = productos.filter(p =>
+    p.descripcion.toLowerCase().includes(searchTerm)
+  );
+
+  itemsSuggestions.innerHTML = matches.map(product => `
+    <div class="suggestion-item" data-item-id="${product.id}">
+      <div class="suggestion-main">
+        <div class="suggestion-title">${product.descripcion}</div>
+        <div class="suggestion-subtitle">
+          <i class="fas fa-tag"></i>
+          $${product.precio}
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
 
 // Al inicio del archivo, después de las variables globales
@@ -747,49 +757,6 @@ function setupForms() {
       } catch (error) {
         console.error('Error al guardar persona:', error);
         showNotification('Error al guardar la persona', 'error');
-      } finally {
-        isProcessingForm = false;
-      }
-    });
-  }
-
-  // Formulario de item
-  const itemForm = document.getElementById('item-form');
-  if (itemForm) {
-    itemForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (isProcessingForm) return;
-      
-      try {
-        isProcessingForm = true;
-        const descriptionInput = document.getElementById('item-description');
-        const priceInput = document.getElementById('item-price');
-        
-        if (!descriptionInput || !priceInput) {
-          showNotification('No se encontraron los campos del formulario', 'error');
-          return;
-        }
-
-        const description = descriptionInput.value.trim();
-        const price = parseFloat(priceInput.value);
-
-        if (description && !isNaN(price) && price > 0) {
-          const newItem = await window.api.addItem({ 
-            descripcion: description, 
-            precio: price
-          });
-
-          productos.push(newItem);
-          await refreshData();
-          showNotification('Producto guardado exitosamente');
-          
-          await reinitializeForm('item-form');
-        } else {
-          showNotification('Por favor complete todos los campos correctamente', 'warning');
-        }
-      } catch (error) {
-        console.error('Error al guardar producto:', error);
-        showNotification('Error al guardar el producto', 'error');
       } finally {
         isProcessingForm = false;
       }
@@ -871,7 +838,7 @@ function setupForms() {
   });
 
   setupPersonaSearch();
-  setupProductoSearch();
+  setupProductSelection();
 }
 
 // Menu and Sidebar Management
@@ -975,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Configurar event listeners
     setupPersonaSearch();
-    setupProductoSearch();
+    setupProductSelection();
     setupSearchHandlers();
     setupMenuHandlers();
     setupForms();
@@ -1021,7 +988,7 @@ async function init() {
     console.log('Configurando event listeners...');
     
     setupPersonaSearch();
-    setupProductoSearch();
+    setupProductSelection();
     setupSearchHandlers();
     setupMenuHandlers();
     initializeResponsiveBehavior();
@@ -1707,48 +1674,59 @@ let editingItemId = null;
 
 function updateAdminItemsList(filteredItems = productos) {
   const adminItemsList = document.getElementById('admin-items-list');
-  if (!adminItemsList) {
-    console.error('No se encontró el elemento admin-items-list');
-    return;
-  }
-
-  if (!filteredItems || filteredItems.length === 0) {
-    adminItemsList.innerHTML = `
-      <div class="text-center py-8">
-        <div class="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-          <i class="fas fa-box-open text-3xl text-gray-400"></i>
-        </div>
-        <p class="text-lg text-gray-600">No hay productos registrados</p>
-        <p class="text-sm text-gray-400 mt-1">Los productos que agregues aparecerán aquí</p>
-      </div>
-    `;
-    return;
-  }
-
+  
   adminItemsList.innerHTML = filteredItems.map(item => `
     <div class="item-card">
       <div class="item-info">
-        <h3 class="item-title">${item.descripcion}</h3>
+        <h3>${item.descripcion}</h3>
         <div class="item-price">
-          <i class="fas fa-tag"></i>
-          <span>$${formatNumber(item.precio)}</span>
+          <span>$${item.precio.toFixed(2)}</span>
         </div>
       </div>
-      <button class="edit-button" data-item-id="${item.id}">
+      <button class="edit-btn" data-item-id="${item.id}">
         <i class="fas fa-edit"></i>
-        <span>Editar</span>
+        Editar
       </button>
     </div>
   `).join('');
 
-  // Agregar eventos de click a los botones de editar
-  adminItemsList.querySelectorAll('.edit-button').forEach(btn => {
+  // Agregar eventos de edición
+  adminItemsList.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const itemId = parseInt(e.target.closest('.edit-button').dataset.itemId);
+      const itemId = parseInt(e.currentTarget.dataset.itemId);
       showEditModal(itemId);
     });
   });
 }
+
+// Configurar buscador simplificado
+function setupItemsSearch() {
+  const searchInput = document.getElementById('search-items');
+  searchInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const filtered = productos.filter(item => 
+      item.descripcion.toLowerCase().includes(searchTerm)
+    );
+    updateAdminItemsList(filtered);
+  });
+}
+
+// Actualizar la inicialización
+async function initProductsSection() {
+  await refreshData();
+  setupItemsSearch();
+  updateAdminItemsList();
+}
+
+// En el DOMContentLoaded, agregar:
+document.addEventListener('DOMContentLoaded', () => {
+  // ... código existente
+  
+  // Inicializar sección de productos
+  if (document.getElementById('items-view')) {
+    initProductsSection();
+  }
+});
 
 // Función para formatear números con separadores de miles
 function formatNumber(num) {
@@ -1857,4 +1835,77 @@ function updateEarnings() {
   } catch (error) {
     console.error('Error al calcular ganancias:', error);
   }
+}
+
+// --- Formulario de Producto (Item) ---
+// Asegurarse de que en el HTML exista un formulario con id "item-form" 
+// y los inputs con id "item-description" y "item-price"
+const itemForm = document.getElementById('item-form');
+
+if (itemForm) {
+  // (Opcional) Si dispones de una función "setupProductSearch" para el buscador, 
+  // puedes llamarla aquí; sino, puede omitirse si el objetivo es registrar manualmente un nuevo producto.
+  // setupProductSearch();
+
+  itemForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (isProcessingForm) return;
+    
+    try {
+      isProcessingForm = true;
+      const descriptionInput = document.getElementById('item-description');
+      const priceInput = document.getElementById('item-price');
+      
+      if (!descriptionInput || !priceInput) {
+        showNotification('No se encontraron los campos del formulario', 'error');
+        return;
+      }
+      
+      const description = descriptionInput.value.trim();
+      const price = parseFloat(priceInput.value);
+      
+      // Verificar si el producto ya existe (comparando la descripción en minúsculas)
+      const existingProduct = productos.find(p => 
+        p.descripcion.toLowerCase() === description.toLowerCase()
+      );
+      
+      if (existingProduct) {
+        // Si existe, preguntar y actualizar el precio si se confirma
+        const confirmUpdate = await window.api.showMessageBox({
+          type: 'question',
+          title: 'Producto Existente',
+          message: `El producto "${description}" ya existe. ¿Desea actualizar su precio a $${price}?`,
+          buttons: ['Sí', 'No']
+        });
+        
+        if (confirmUpdate.response === 0) {
+          existingProduct.precio = price;
+          await window.api.updateDatabase({ ...appData, items: productos });
+          await refreshData();
+          showNotification('Precio actualizado exitosamente');
+        }
+      } else {
+        // Si no existe, crear un nuevo producto siempre y cuando los datos sean válidos
+        if (description && !isNaN(price) && price > 0) {
+          const newItem = await window.api.addItem({ 
+            descripcion: description, 
+            precio: price
+          });
+          productos.push(newItem);
+          await refreshData();
+          showNotification('Producto guardado exitosamente');
+        } else {
+          showNotification('Por favor complete todos los campos correctamente', 'warning');
+        }
+      }
+      
+      // Reinicializar el formulario (limpiar inputs y estados)
+      await reinitializeForm('item-form');
+    } catch (error) {
+      console.error('Error al guardar producto:', error);
+      showNotification('Error al guardar el producto', 'error');
+    } finally {
+      isProcessingForm = false;
+    }
+  });
 }

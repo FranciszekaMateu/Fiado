@@ -613,48 +613,29 @@ body {
     top: 100%;
     left: 0;
     right: 0;
-    padding: 0;
-    opacity: 0;
-    pointer-events: none;
-    max-height: 350px;
-    overflow-y: auto;
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0px 4px 20px rgba(0,0,0,0.15);
-    transition: all 0.3s ease;
-    z-index: 1000;
-    margin-top: 8px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 1060;
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
     border: 1px solid rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.2s ease;
 }
 
 .suggestions.show {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
-    padding: 8px;
-}
-
-.suggestions-group {
-    margin-bottom: 8px;
-}
-
-.suggestions-group-title {
-    padding: 8px 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #644bff;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(100, 75, 255, 0.05);
-    border-radius: 6px;
-    margin-bottom: 4px;
 }
 
 .suggestion-item {
-    padding: 8px 12px;
-    cursor: pointer;
+    padding: 12px;
+    cursor: pointer !important;
     border-radius: 8px;
     transition: all 0.2s ease;
     display: flex;
@@ -662,6 +643,7 @@ body {
     justify-content: space-between;
     margin-bottom: 2px;
     background: #fff;
+    user-select: none;
 }
 
 .suggestion-item:hover {
@@ -669,15 +651,21 @@ body {
     transform: translateX(4px);
 }
 
+.suggestion-item:active {
+    background: #f0f0ff;
+    transform: translateX(2px);
+}
+
 .suggestion-main {
     flex: 1;
     min-width: 0;
+    padding-right: 12px;
 }
 
 .suggestion-title {
     font-weight: 500;
     color: #2d3748;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -695,17 +683,17 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: 12px;
 }
 
 .suggestion-badge {
-    padding: 4px 8px;
+    padding: 6px 10px;
     border-radius: 6px;
     font-size: 0.75rem;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 4px;
+    transition: all 0.2s ease;
 }
 
 .suggestion-badge.person {
@@ -718,13 +706,8 @@ body {
     color: #2e7d32;
 }
 
-.suggestion-price {
-    font-weight: 600;
-    color: #2d3748;
-    padding: 4px 8px;
-    background: #f7fafc;
-    border-radius: 6px;
-    font-size: 0.875rem;
+.suggestion-item:hover .suggestion-badge {
+    transform: scale(1.05);
 }
 
 .suggestions-empty {
@@ -877,18 +860,13 @@ body {
 
 .form-row {
     display: flex;
-    gap: 1.5rem;
+    gap: 1rem;
     margin-bottom: 1.5rem;
-}
-
-.form-row .form-group {
-    flex: 1;
-    margin-bottom: 0;
 }
 
 .form-group {
-    margin-bottom: 1.5rem;
-    position: relative;
+    flex: 1;
+    margin-bottom: 0;
 }
 
 .form-group label {
@@ -1461,9 +1439,6 @@ body {
     z-index: 10;
     opacity: 0;
     pointer-events: none;
-    transition: all 0.3s ease;
-    max-height: 250px;
-    overflow-y: auto;
 }
 
 .form-grid {
@@ -1537,5 +1512,176 @@ body {
 /* Ajustar el espacio del formulario */
 #fiado-form {
     padding-bottom: 350px; /* Asegurar espacio suficiente para las sugerencias */
+}
+
+/* Ajustes específicos para el buscador de productos */
+#item-description {
+    position: relative;
+    z-index: 1050; /* Asegurar que el input esté por encima */
+}
+
+/* Contenedor de sugerencias de productos */
+#items-search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 1060; /* Asegurar que las sugerencias estén por encima */
+    margin-top: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Asegurarse que las sugerencias estén siempre visibles */
+#items-search-suggestions.show {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Estilos compartidos para ambos buscadores */
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+    background: #fff;
+}
+
+.suggestion-item:hover {
+    background: #f8f9ff;
+    transform: translateX(4px);
+}
+
+.suggestion-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.suggestion-title {
+    font-weight: 500;
+    color: #2d3748;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.suggestion-subtitle {
+    font-size: 0.813rem;
+    color: #718096;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.suggestion-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+.suggestion-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.suggestion-badge.person {
+    background: #f0f0ff;
+    color: #644bff;
+}
+
+.suggestion-badge.product {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* Estilos simplificados para la sección de productos */
+.products-container {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.products-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.search-container {
+  position: relative;
+  margin: 1rem 0;
+}
+
+#search-items {
+  width: 100%;
+  padding: 0.75rem 2rem;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+}
+
+.search-container .fa-search {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.products-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.item-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-info h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.item-price span {
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.edit-btn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-btn:hover {
+  background: #1976D2;
 }
   
